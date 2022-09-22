@@ -1,0 +1,2440 @@
+---
+title: "Visualization of IEO datasets"
+author: "Wouter van der Valk"
+date: "16-8-2022"
+output: html_document
+---
+
+Use IEO_SCT_ccmiri_PCA30_UMAP_7 generated in Rmarkdown file "QC and data integration of IEO datasets".
+
+```{r Load ccmiri_PCA30_UMAP_7}
+IEO_SCT_ccmiri_PCA30_UMAP_7 <- readRDS("~/data/IEO_SCT_ccmiri_PCA30_UMAP_7.rds")
+```
+
+```{r Rename clusters}
+new.cluster.ids <- c("Chondrocytes 1", "Fibroblasts 1", "Mesenchymal cells 1", "Basal keratinocytes", "Fibroblasts 2", "Mesenchymal cells 2", "Other keratinocytes", "Otic epithelial cells", "Mesenchymal cells 3", "Chondrocytes 2", "Mesenchymal cells 4", "Chondrocytes 3", "Mesenchymal cells 5", "Skeletal myocytes", "Neuroepithelial cells 1", "Pericytes", "Perioitic mesenchymal cells", "Chondrocytes 4", "Schwann cells", "Mesenchymal cells 6", "Neuroepithelial cells 2", "Mesenchymal cells 7", "Cycling cells", "Neuroepithelial cells 3", "Ependymal cells", "Endothelial cells", "Melanocytes", "Precursor mycoytes", "Hair cells")
+names(new.cluster.ids) <- levels(IEO_SCT_ccmiri_PCA30_UMAP_7)
+IEO_SCT_ccmiri_PCA30_UMAP_7 <- RenameIdents(IEO_SCT_ccmiri_PCA30_UMAP_7, new.cluster.ids, colours(colors))
+```
+
+```{r Save ccmiri_PCA30_UMAP_7 with new annotations}
+saveRDS(IEO_SCT_ccmiri_PCA30_UMAP_7, "~/output/IEO_SCT_ccmiri_PCA30_UMAP_7.rds")
+```
+
+```{r Setup colors for plotting}
+colors<-c("#0450fb", "#11aac4", "#42e8f3", "#4d648d", "#11aac4", "#42e8f3", "#4d648d", "#AEC7E8", "#42e8f3", "#0450fb", "#42e8f3", "#0450fb", "#42e8f3", "#ffdb00", "#9eccaf", "#2CA02C", "#daf400", "#0450fb", "#f9ae34", "#42e8f3", "#9eccaf", "#42e8f3", "#ff8b94", "#9eccaf", "#9999FF", "#ffd3b6", "#983b59", "#ffdb00", "#e81f3f")
+```
+
+```{r Load top 5 markers}
+IEO_SCT_ccmiri_PCA30_UMAP_7.markers <- read.csv("~/output/IEO_SCT_ccmiri_PCA30_UMAP_7.markers.csv")
+
+top5.markers <- IEO_SCT_ccmiri_PCA30_UMAP_7.markers %>% group_by(cluster) %>% top_n(5, avg_log2FC)
+
+DefaultAssay(IEO_SCT_ccmiri_PCA30_UMAP_7) <- "RNA"
+IEO_SCT_ccmiri_PCA30_UMAP_7 <-ScaleData(IEO_SCT_ccmiri_PCA30_UMAP_7)
+top5_heatmap_RNA <- DoHeatmap(object = IEO_SCT_ccmiri_PCA30_UMAP_7, features = top5.markers$gene, label = TRUE, group.colors = colors, size = .5) + scale_fill_viridis(option="mako")
+
+pdf("top5_heatmap_RNA.pdf", width = 32, height = 16)
+print(top5_heatmap_RNA)
+dev.off()
+jpeg("top5_heatmap_RNA.jpg", width = 7200, height = 4800)
+print(top5_heatmap_RNA)
+dev.off()
+```
+
+## Generate UMAPs
+```{r Generate UMAP plots}
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), raster = FALSE) + ggtitle("UMAP plot") & NoAxes() &NoLegend()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot.pdf", width = 6, height = 6)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot)
+
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), raster = FALSE, pt.size = 5) + ggtitle("UMAP plot") & NoAxes() &NoLegend()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot.jpg", width = 2400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_legend <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), raster = FALSE) + ggtitle("UMAP plot") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_legend.pdf", width = 8, height = 8)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_legend)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_legend
+
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbyexperiment <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), split.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbyexperiment.pdf", width = 40, height = 4)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbyexperiment)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbycellline <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), split.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbycellline.pdf", width = 19, height = 4)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbycellline)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbytimepoint <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), split.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbytimepoint.pdf", width = 19, height = 4)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbytimepoint)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbytechnique <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), split.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbytechnique.pdf", width = 13, height = 4)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_splitbytechnique)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbyexperiment <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), group.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbyexperiment.pdf", width = 7, height = 7)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbyexperiment)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbycellline <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), group.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbycellline.pdf", width = 7, height = 7)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbycellline)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbytimepoint <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols=c("#4d648d", "#11aac4", "#ff8b94"), group.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbytimepoint.pdf", width = 7, height = 7)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbytimepoint)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbytechnique <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols=c("#4d648d", "#11aac4"), group.by = "technique", order = c("sn", "sc"), raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbytechnique.pdf", width = 7, height = 7)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_groupbytechnique)
+dev.off()
+
+
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_pals <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_pals.jpg", width = 2400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_pals)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbyexperiment <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), pt.size = 5, split.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbyexperiment.jpg", width = 24000, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbyexperiment)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbycellline <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), pt.size = 5, split.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbycellline.jpg", width = 11400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbycellline)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbytimepoint <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), pt.size = 5, split.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbytimepoint.jpg", width = 11400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbytimepoint)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbytechnique <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), pt.size = 5, split.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbytechnique.jpg", width = 7800, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_splitbytechnique)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbyexperiment <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols = DiscretePalette(44,palette = "stepped"), pt.size = 5, group.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbyexperiment.jpg", width = 4200, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbyexperiment)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbycellline <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), pt.size = 5, group.by = "cellline", order = c("04i10", "H1 and 04i10", "WTC"), raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbycellline.jpg", width = 4200, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbycellline)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbytimepoint <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), pt.size = 5, group.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbytimepoint.jpg", width = 4200, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbytimepoint)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbytechnique <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, cols=c("#4d648d", "#11aac4"), pt.size = 5, group.by = "technique", order = c("sn", "sc"), raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbytechnique.jpg", width = 4200, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7_dimplot_jpg_groupbytechnique)
+dev.off()
+```
+
+## Generate IEO_SCT_ccmiri_PCA30_UMAP_simple with simple annotations and corresponding UMAPs
+```{r}
+new.cluster.ids <- c("Chondrocytes", "Fibroblasts", "Mesenchymal cells", "Keratinocytes", "Fibroblasts", "Mesenchymal cells", "Keratinocytes", "Otic epithelial cells", "Mesenchymal cells", "Chondrocytes", "Mesenchymal cells", "Chondrocytes", "Mesenchymal cells", "Skeletal myocytes", "Neuroepithelial cells", "Pericytes", "Periotic mesenchymal cells", "Chondrocytes", "Schwann cells", "Mesenchymal cells", "Neuroepithelial cells", "Mesenchymal cells", "Cycling cells", "Neuroepithelial cells", "Ependymal cells", "Endothelial cells", "Melanocytes", "Skeletal myocytes", "Hair cells")
+
+names(new.cluster.ids) <- levels(IEO_SCT_ccmiri_PCA30_UMAP_7)
+IEO_SCT_ccmiri_PCA30_UMAP_simple <- RenameIdents(IEO_SCT_ccmiri_PCA30_UMAP_7, new.cluster.ids, colours(colors))
+```
+
+```{r Save ccmiri_PCA30_UMAP_7 with new simple annotations}
+saveRDS(IEO_SCT_ccmiri_PCA30_UMAP_simple, "~/output/IEO_SCT_ccmiri_PCA30_UMAP_simple.rds")
+```
+
+```{r Setup colors for plotting simple}
+colors_simple<-c("#0450fb", "#11aac4", "#42e8f3", "#4d648d", "#AEC7E8", "#ffdb00", "#9eccaf", "#2CA02C", "#daf400", "#f9ae34", "#ff8b94", "#9999FF", "#ffd3b6", "#983b59", "#e81f3f")
+```
+
+```{r Generate UMAP plots simple}
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, raster = FALSE) + ggtitle("UMAP plot") & NoAxes() &NoLegend()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot.pdf", width = 6, height = 6)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, raster = FALSE, pt.size = 5) & NoAxes() &NoLegend()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg.jpg", width = 2400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbyexperiment <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, split.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbyexperiment.pdf", width = 40, height = 4)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbyexperiment)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbycellline <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, split.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbycellline.pdf", width = 19, height = 4)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbycellline)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbytimepoint <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, split.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbytimepoint.pdf", width = 19, height = 4)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbytimepoint)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbytechnique <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, split.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbytechnique.pdf", width = 13, height = 4)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_splitbytechnique)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbyexperiment <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, group.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbyexperiment.pdf", width = 7, height = 7)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbyexperiment)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbycellline <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), group.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbycellline.pdf", width = 7, height = 7)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbycellline)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbytimepoint <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=c("#4d648d", "#11aac4", "#ff8b94"), group.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbytimepoint.pdf", width = 7, height = 7)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbytimepoint)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbytechnique <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=c("#4d648d", "#11aac4"), group.by = "technique", order = c("sn", "sc"), raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+pdf("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbytechnique.pdf", width = 7, height = 7)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_groupbytechnique)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbyexperiment <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, pt.size = 5, split.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbyexperiment.jpg", width = 24000, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbyexperiment)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbycellline <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, pt.size = 5, split.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbycellline.jpg", width = 11400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbycellline)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbytimepoint <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, pt.size = 5, split.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbytimepoint.jpg", width = 11400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbytimepoint)
+dev.off()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbytechnique <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, pt.size = 5, split.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbytechnique.jpg", width = 7800, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_splitbytechnique)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbyexperiment <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=colors_simple, pt.size = 5, group.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes() & NoLegend()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbyexperiment.jpg", width = 2400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbyexperiment)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbycellline <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=c("#4d648d", "#11aac4", "#2ca02c", "#990066", "#f9ae34"), pt.size = 5, group.by = "cellline", order = c("doublet", "H1", "04i", "WTC_GCaMP","WTC_SOX2"), raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes() & NoLegend()
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbycellline
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbycellline.jpg", width = 2400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbycellline)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbytimepoint <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=c("#4d648d", "#2ca02c", "#990066"), pt.size = 5, group.by = "timepoint", order = c("d110", "d100", "d75"), raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes() & NoLegend()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbytimepoint.jpg", width = 2400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbytimepoint)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbytechnique <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_simple, cols=c("#4d648d", "#2ca02c"), pt.size = 5, group.by = "technique", order = c("sn", "sc"), raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes() & NoLegend()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbytechnique.jpg", width = 2400, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_simple_dimplot_jpg_groupbytechnique)
+dev.off()
+```
+
+### Cluster analysis according to https://github.com/klarman-cell-observatory/HTAPP-Pipelines/blob/master/HTAPP_methods_toolbox/htapp_methods_lung_annotate_toPostJuly2020.Rmd from Slyper, M. (2020, Nature Medicine).
+
+```{r Generate tables containing information on technique, cell line, timepoint and batch, both absolute (talbe.cluster.xxx) and relative (freq.cluster.xxx)}
+IEO_data_analyses <- IEO_SCT_ccmiri_PCA30_UMAP_simple
+
+table.cluster.experiment <- table(IEO_data_analyses@active.ident, IEO_data_analyses@meta.data$experiment)
+freq.cluster.experiment <- table.cluster.experiment / rowSums(table.cluster.experiment) 
+freq.experiment.cluster <- sweep(table.cluster.experiment, 2, colSums(table.cluster.experiment), '/')
+freq.experiment.cluster
+
+table.cluster.technique <- table(IEO_data_analyses@active.ident, IEO_data_analyses@meta.data$technique)
+freq.cluster.technique <- table.cluster.technique / rowSums(table.cluster.technique)
+freq.technique.cluster <- sweep(table.cluster.technique, 2, colSums(table.cluster.technique), '/')
+
+table.cluster.timepoint <- table(IEO_data_analyses@active.ident, IEO_data_analyses@meta.data$timepoint)
+freq.cluster.timepoint <- table.cluster.timepoint / rowSums(table.cluster.timepoint) 
+freq.timepoint.cluster <- sweep(table.cluster.timepoint, 2, colSums(table.cluster.timepoint), '/')
+
+table.cluster.cellline <- table(IEO_data_analyses@active.ident, IEO_data_analyses@meta.data$cellline)
+freq.cluster.cellline <- table.cluster.cellline / rowSums(table.cluster.cellline) 
+freq.cellline.cluster <- sweep(table.cluster.cellline, 2, colSums(table.cluster.cellline), '/')
+
+
+freq.experiment <- prop.table(colSums(table.cluster.experiment))
+freq.technique <- prop.table(colSums(table.cluster.technique))
+freq.timepoint <- prop.table(colSums(table.cluster.timepoint))
+freq.cellline <- prop.table(colSums(table.cluster.cellline))
+freq.cluster <- prop.table(rowSums(table.cluster.experiment)) 
+freq.experiment
+freq.technique
+freq.timepoint
+freq.cellline
+freq.cluster
+```
+
+```{r Create piecharts}
+table.cluster.overall <-  as.data.frame.matrix(table.cluster.experiment) 
+table.cluster.overall$Sum <- rowSums(table.cluster.overall)*100
+table.cluster.overall <- subset(table.cluster.overall, select = Sum)
+freq.cluster.overall <- table.cluster.overall / colSums(table.cluster.overall)
+df_cluster <- as.data.frame.matrix(freq.cluster.overall) 
+df_cluster["cluster"] <- rownames(df_cluster)
+df_cluster
+
+cluster_order <- c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Ependymal cells","Schwann cells","Keratinocytes", "Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial cells","Cycling cells")
+
+Percentage <- df_cluster %>% 
+  mutate(csum = rev(cumsum(rev(Sum))), 
+         pos = Sum/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), Sum/2, pos))
+Percentage
+
+Piechart_simple_legend <- ggplot(data = df_cluster, aes(x = "", y = Sum, fill = fct_relevel(cluster, 
+            cluster_order))) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0, direction = -1) +
+  scale_fill_manual(values=c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))+
+  theme_void()
+
+pdf("Piechart_simple_legend.pdf", width = 7, height = 7)
+print(Piechart_simple_legend)
+dev.off()
+Piechart_simple_legend
+
+Piechart_simple <- ggplot(data = df_cluster, aes(x = "", y = Sum, fill = fct_relevel(cluster, 
+            cluster_order))) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0, direction = -1) +
+  scale_fill_manual(values=c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))+
+  theme_void() & NoAxes() & NoLegend()
+
+pdf("Piechart_simple.pdf", width = 2, height = 2)
+print(Piechart_simple)
+dev.off()
+jpeg("Piechart_simple.jpg", width = 1200, height = 1200)
+print(Piechart_simple)
+dev.off()
+Piechart_simple
+```
+
+```{r Bar plot of frequency of cell clusters found within each experiment}
+df_experiment <- as.data.frame.matrix(freq.experiment.cluster) 
+df_experiment["cluster"] <- rownames(df_experiment)
+
+df_experiment <- df_experiment[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Ependymal cells","Schwann cells","Keratinocytes", "Intermediate keratinocytes", "Peridermal keratinocytes", "Matrix cells", "Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial cells","Cycling cells"),]
+
+df_experiment <- gather(df_experiment, "experiment", "frequency", c(1:(ncol(df_experiment)-1)))
+df_experiment$cluster <- factor(df_experiment$cluster, levels = unique(df_experiment$cluster)) 
+df_experiment_plot_legend <- ggplot(data = df_experiment) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))  
+pdf("df_experiment_plot_legend.pdf", width = 7, height = 7)
+print(df_experiment_plot_legend)
+dev.off()
+df_experiment_plot_legend
+
+df_experiment_plot <- ggplot(data = df_experiment) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))     & NoAxes() & NoLegend()
+pdf("df_experiment_plot.pdf", width = 7, height = 7)
+print(df_experiment_plot)
+dev.off()
+jpeg("df_experiment_plot.jpg", width = 1200, height = 1200)
+print(df_experiment_plot)
+dev.off()
+df_experiment_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each technique}
+df_technique <- as.data.frame.matrix(freq.technique.cluster) 
+df_technique["cluster"] <- rownames(df_technique)
+
+df_technique <- df_technique[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Ependymal cells","Schwann cells","Keratinocytes", "Intermediate keratinocytes", "Peridermal keratinocytes", "Matrix cells", "Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial cells","Cycling cells"),]
+
+df_technique <- gather(df_technique, "technique", "frequency", c(1:(ncol(df_technique)-1)))
+df_technique$cluster <- factor(df_technique$cluster, levels = unique(df_technique$cluster)) 
+df_technique_plot_legend <- ggplot(data = df_technique) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))      
+pdf("df_technique_plot_legend.pdf", width = 7, height = 7)
+print(df_technique_plot_legend)
+dev.off()
+df_technique_plot_legend
+
+df_technique_plot <- ggplot(data = df_technique) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))     & NoAxes() & NoLegend()
+pdf("df_technique_plot.pdf", width = 7, height = 7)
+print(df_technique_plot)
+dev.off()
+jpeg("df_technique_plot.jpg", width = 1200, height = 1200)
+print(df_technique_plot)
+dev.off()
+df_technique_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint}
+df_timepoint <- as.data.frame.matrix(freq.timepoint.cluster) 
+df_timepoint["cluster"] <- rownames(df_timepoint)
+
+df_timepoint <- df_timepoint[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Ependymal cells","Schwann cells","Keratinocytes", "Intermediate keratinocytes", "Peridermal keratinocytes", "Matrix cells", "Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial cells","Cycling cells"),]
+
+df_timepoint <- gather(df_timepoint, "timepoint", "frequency", c(1:(ncol(df_timepoint)-1)))
+df_timepoint$cluster <- factor(df_timepoint$cluster, levels = unique(df_timepoint$cluster)) 
+df_timepoint <- mutate(df_timepoint, timepoint = fct_relevel(timepoint, "d75", "d100","d110"))
+df_timepoint_plot_legend <- ggplot(data = df_timepoint) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))      
+pdf("df_timepoint_plot_legend.pdf", width = 7, height = 7)
+print(df_timepoint_plot_legend)
+dev.off()
+df_timepoint_plot_legend
+
+df_timepoint_plot <- ggplot(data = df_timepoint) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))     & NoAxes() & NoLegend()
+pdf("df_timepoint_plot.pdf", width = 7, height = 7)
+print(df_timepoint_plot)
+dev.off() 
+jpeg("df_timepoint_plot.jpg", width = 1200, height = 1200)
+print(df_timepoint_plot)
+dev.off() 
+df_timepoint_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each cellline}
+df_cellline <- as.data.frame.matrix(freq.cellline.cluster) 
+df_cellline["cluster"] <- rownames(df_cellline)
+
+df_cellline <- df_cellline[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Ependymal cells","Schwann cells","Keratinocytes", "Intermediate keratinocytes", "Peridermal keratinocytes", "Matrix cells", "Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial cells","Cycling cells"),]
+
+df_cellline <- gather(df_cellline, "cellline", "frequency", c(1:(ncol(df_cellline)-1)))
+df_cellline$cluster <- factor(df_cellline$cluster, levels = unique(df_cellline$cluster)) 
+df_cellline <- mutate(df_cellline, cellline = fct_relevel(cellline, "WTC_GCaMP", "WTC_SOX2","04i", "H1", "doublet"))
+df_cellline_plot_legend <- ggplot(data = df_cellline) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))      
+pdf("df_cellline_plot_legend.pdf", width = 7, height = 7)
+print(df_cellline_plot_legend)
+dev.off()
+df_cellline_plot_legend
+
+df_cellline_plot <- ggplot(data = df_cellline) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#9999FF","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94"))     & NoAxes() & NoLegend()
+pdf("df_cellline_plot.pdf", width = 7, height = 7)
+print(df_cellline_plot)
+dev.off() 
+jpeg("df_cellline_plot.jpg", width = 1200, height = 1200)
+print(df_cellline_plot)
+dev.off() 
+df_cellline_plot
+```
+
+### Generate IEO_SCT_ccmiri_PCA30_UMAP_simple_largegroup with large group annotations and corresponding UMAPs
+```{r Load ccmiri_PCA30_UMAP_7 for largegroup}
+IEO_SCT_ccmiri_PCA30_UMAP_simple_largegroup <- readRDS("~/data/IEO_SCT_ccmiri_PCA30_UMAP_7.rds")
+```
+
+```{r new clusters for largegroup}
+new.cluster.ids_largegroup <- c("Mesenchymal", "Mesenchymal", "Mesenchymal", "Epithelial", "Mesenchymal", "Mesenchymal", "Epithelial", "Otic", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Neuroectodermal", "Mesenchymal", "Otic", "Mesenchymal", "Neuroectodermal", "Mesenchymal", "Neuroectodermal", "Mesenchymal", "Cycling", "Neuroectodermal", "Neuroectodermal", "Endothelial", "Neuroectodermal", "Mesenchymal", "Otic")
+names(new.cluster.ids_largegroup) <- levels(IEO_SCT_ccmiri_PCA30_UMAP_simple_largegroup)
+IEO_SCT_ccmiri_PCA30_UMAP_simple_largegroup <- RenameIdents(IEO_SCT_ccmiri_PCA30_UMAP_simple_largegroup, new.cluster.ids_largegroup)
+```
+
+```{r Save ccmiri_PCA30_UMAP_7 with new annotations for largegroup}
+saveRDS(IEO_SCT_ccmiri_PCA30_UMAP_simple_largegroup, "~/output/IEO_SCT_ccmiri_PCA30_UMAP_simple_largegroup.rds")
+```
+
+```{r Generate tables containing information on technique, cell line, timepoint and batch, both absolute (talbe.cluster.xxx) and relative (freq.cluster.xxx) _largegroup}
+IEO_data_analyses_largegroup <- IEO_SCT_ccmiri_PCA30_UMAP_simple_largegroup
+
+table.cluster.experiment_largegroup <- table(IEO_data_analyses_largegroup@active.ident, IEO_data_analyses_largegroup@meta.data$experiment)
+freq.cluster.experiment_largegroup <- table.cluster.experiment_largegroup / rowSums(table.cluster.experiment_largegroup) 
+freq.experiment.cluster_largegroup <- sweep(table.cluster.experiment_largegroup, 2, colSums(table.cluster.experiment_largegroup), '/')
+
+table.cluster.technique_largegroup <- table(IEO_data_analyses_largegroup@active.ident, IEO_data_analyses_largegroup@meta.data$technique)
+freq.cluster.technique_largegroup <- table.cluster.technique_largegroup / rowSums(table.cluster.technique_largegroup)
+freq.technique.cluster_largegroup <- sweep(table.cluster.technique_largegroup, 2, colSums(table.cluster.technique_largegroup), '/')
+
+table.cluster.timepoint_largegroup <- table(IEO_data_analyses_largegroup@active.ident, IEO_data_analyses_largegroup@meta.data$timepoint)
+freq.cluster.timepoint_largegroup <- table.cluster.timepoint_largegroup / rowSums(table.cluster.timepoint_largegroup) 
+freq.timepoint.cluster_largegroup <- sweep(table.cluster.timepoint_largegroup, 2, colSums(table.cluster.timepoint_largegroup), '/')
+
+table.cluster.cellline_largegroup <- table(IEO_data_analyses_largegroup@active.ident, IEO_data_analyses_largegroup@meta.data$cellline)
+freq.cluster.cellline_largegroup <- table.cluster.cellline_largegroup / rowSums(table.cluster.cellline_largegroup) 
+freq.cellline.cluster_largegroup <- sweep(table.cluster.cellline_largegroup, 2, colSums(table.cluster.cellline_largegroup), '/')
+
+freq.experiment_largegroup <- prop.table(colSums(table.cluster.experiment_largegroup))
+freq.technique_largegroup  <- prop.table(colSums(table.cluster.technique_largegroup))
+freq.timepoint_largegroup  <- prop.table(colSums(table.cluster.timepoint_largegroup))
+freq.cellline_largegroup  <- prop.table(colSums(table.cluster.cellline_largegroup))
+freq.cluster_largegroup  <- prop.table(rowSums(table.cluster.experiment_largegroup)) 
+freq.experiment_largegroup 
+freq.technique_largegroup 
+freq.timepoint_largegroup 
+freq.cellline_largegroup 
+freq.cluster_largegroup 
+```
+
+```{r Create piecharts _largegroup}
+table.cluster.overall_largegroup <-  as.data.frame.matrix(table.cluster.experiment_largegroup) 
+table.cluster.overall_largegroup$Sum <- rowSums(table.cluster.overall_largegroup)*100
+table.cluster.overall_largegroup <- subset(table.cluster.overall_largegroup, select = Sum)
+freq.cluster.overall_largegroup <- table.cluster.overall_largegroup / colSums(table.cluster.overall_largegroup)
+df_cluster_largegroup <- as.data.frame.matrix(freq.cluster.overall_largegroup) 
+df_cluster_largegroup["cluster"] <- rownames(df_cluster_largegroup)
+df_cluster_largegroup
+
+cluster_order <- c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling")
+
+Percentage <- df_cluster_largegroup %>% 
+  mutate(csum = rev(cumsum(rev(Sum))), 
+         pos = Sum/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), Sum/2, pos))
+Percentage
+
+Piechart_simple_legend_largegroup <- ggplot(data = df_cluster_largegroup, aes(x = "", y = Sum, fill = fct_relevel(cluster, 
+            cluster_order))) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0, direction = -1) +
+  scale_fill_manual(values=c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))+
+  theme_void()
+
+pdf("Piechart_simple_legend_largegroup.pdf", width = 7, height = 7)
+print(Piechart_simple_legend_largegroup)
+dev.off()
+Piechart_simple_legend_largegroup
+
+Piechart_simple_largegroup <- ggplot(data = df_cluster_largegroup, aes(x = "", y = Sum, fill = fct_relevel(cluster, 
+            cluster_order))) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0, direction = -1) +
+  scale_fill_manual(values=c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))+
+  theme_void() & NoAxes() & NoLegend()
+
+pdf("Piechart_simple_largegroup.pdf", width = 2, height = 2)
+print(Piechart_simple_largegroup)
+dev.off()
+jpeg("Piechart_simple_largegroup.jpg", width = 1200, height = 1200)
+print(Piechart_simple_largegroup)
+dev.off()
+Piechart_simple_largegroup
+```
+
+```{r Bar plot of frequency of cell clusters found within each experiment _largegroup}
+df_experiment_largegroup <- as.data.frame.matrix(freq.experiment.cluster_largegroup) 
+df_experiment_largegroup["cluster"] <- rownames(df_experiment_largegroup)
+
+df_experiment_largegroup <- df_experiment_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling"),]
+
+df_experiment_largegroup <- gather(df_experiment_largegroup, "experiment", "frequency", c(1:(ncol(df_experiment_largegroup)-1)))
+df_experiment_largegroup$cluster <- factor(df_experiment_largegroup$cluster, levels = unique(df_experiment_largegroup$cluster)) 
+df_experiment_largegroup_plot_legend <- ggplot(data = df_experiment_largegroup) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))
+pdf("df_experiment_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_experiment_largegroup_plot_legend)
+dev.off()
+df_experiment_largegroup_plot_legend
+
+df_experiment_largegroup_plot <- ggplot(data = df_experiment_largegroup) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))   & NoAxes() & NoLegend()
+pdf("df_experiment_largegroup_plot.pdf", width = 7, height = 7)
+print(df_experiment_largegroup_plot)
+dev.off()
+jpeg("df_experiment_largegroup_plot.jpg", width = 1200, height = 1200)
+print(df_experiment_largegroup_plot)
+dev.off()
+df_experiment_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each technique _largegroup}
+df_technique_largegroup <- as.data.frame.matrix(freq.technique.cluster_largegroup) 
+df_technique_largegroup["cluster"] <- rownames(df_technique_largegroup)
+
+df_technique_largegroup <- df_technique_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling"),]
+
+df_technique_largegroup <- gather(df_technique_largegroup, "technique", "frequency", c(1:(ncol(df_technique_largegroup)-1)))
+df_technique_largegroup$cluster <- factor(df_technique_largegroup$cluster, levels = unique(df_technique_largegroup$cluster))
+df_technique_largegroup <- mutate(df_technique_largegroup, technique = fct_relevel(technique, "sc", "sn"))
+df_technique_largegroup_plot_legend <- ggplot(data = df_technique_largegroup) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))   
+pdf("df_technique_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_technique_largegroup_plot_legend)
+dev.off()
+df_technique_largegroup_plot_legend
+
+df_technique_largegroup_plot <- ggplot(data = df_technique_largegroup) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))  & NoAxes() & NoLegend()
+pdf("df_technique_largegroup_plot.pdf", width = 7, height = 7)
+print(df_technique_largegroup_plot)
+dev.off()
+jpeg("df_technique_largegroup_plot.jpg", width = 1200, height = 1200)
+print(df_technique_largegroup_plot)
+dev.off()
+df_technique_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint _largegroup}
+df_timepoint_largegroup <- as.data.frame.matrix(freq.timepoint.cluster_largegroup) 
+df_timepoint_largegroup["cluster"] <- rownames(df_timepoint_largegroup)
+
+df_timepoint_largegroup <- df_timepoint_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling"),]
+
+df_timepoint_largegroup <- gather(df_timepoint_largegroup, "timepoint", "frequency", c(1:(ncol(df_timepoint_largegroup)-1)))
+df_timepoint_largegroup$cluster <- factor(df_timepoint_largegroup$cluster, levels = unique(df_timepoint_largegroup$cluster)) 
+df_timepoint_largegroup <- mutate(df_timepoint_largegroup, timepoint = fct_relevel(timepoint, "d75", "d100", "d110"))
+df_timepoint_largegroup_plot_legend <- ggplot(data = df_timepoint_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))    
+pdf("df_timepoint_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_timepoint_largegroup_plot_legend)
+dev.off()
+df_timepoint_largegroup_plot_legend
+
+df_timepoint_largegroup_plot <- ggplot(data = df_timepoint_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))  & NoAxes() & NoLegend()
+pdf("df_timepoint_largegroup_plot.pdf", width = 7, height = 7)
+print(df_timepoint_largegroup_plot)
+dev.off() 
+jpeg("df_timepoint_largegroup_plot.jpg", width = 1200, height = 1200)
+print(df_timepoint_largegroup_plot)
+dev.off() 
+df_timepoint_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each cellline _largegroup}
+df_cellline_largegroup <- as.data.frame.matrix(freq.cellline.cluster_largegroup) 
+df_cellline_largegroup["cluster"] <- rownames(df_cellline_largegroup)
+
+df_cellline_largegroup <- df_cellline_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling"),]
+
+df_cellline_largegroup <- gather(df_cellline_largegroup, "cellline", "frequency", c(1:(ncol(df_cellline_largegroup)-1)))
+df_cellline_largegroup$cluster <- factor(df_cellline_largegroup$cluster, levels = unique(df_cellline_largegroup$cluster))
+df_cellline_largegroup <- mutate(df_cellline_largegroup, cellline = fct_relevel(cellline, "WTC_GCaMP", "WTC_SOX2","04i", "H1", "doublet"))
+df_cellline_largegroup_plot_legend <- ggplot(data = df_cellline_largegroup) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))  
+pdf("df_cellline_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_cellline_largegroup_plot_legend)
+dev.off()
+df_cellline_largegroup_plot_legend
+
+df_cellline_largegroup_plot <- ggplot(data = df_cellline_largegroup) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8"))   & NoAxes() & NoLegend()
+pdf("df_cellline_largegroup_plot.pdf", width = 7, height = 7)
+print(df_cellline_largegroup_plot)
+dev.off() 
+jpeg("df_cellline_largegroup_plot.jpg", width = 1200, height = 1200)
+print(df_cellline_largegroup_plot)
+dev.off() 
+df_cellline_largegroup_plot
+```
+
+## Create density plots for specific marker genes using Nebulosa
+```{r Nebulosa plots}
+plotdens_CDH1 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "CDH1", legend_title = "Epithelium CDH1", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_CDH1.jpg", width = 2400, height = 2400)
+print(plotdens_CDH1)
+dev.off()
+
+plotdens_EPCAM <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "EPCAM", legend_title = "Epithelium EPCAM", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_EPCAM.jpg", width = 2400, height = 2400)
+print(plotdens_EPCAM)
+dev.off()
+
+plotdens_PRRX1 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "PRRX1", legend_title = "Mesenchyme PRRX1", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_PRRX1.jpg", width = 2400, height = 2400)
+print(plotdens_PRRX1)
+dev.off()
+
+plotdens_OC90 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "OC90", legend_title = "Otic OC90", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_OC90.jpg", width = 2400, height = 2400)
+print(plotdens_OC90)
+dev.off()
+
+plotdens_ACAN <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "ACAN", legend_title = "Chondrocyte ACAN", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_ACAN.jpg", width = 2400, height = 2400)
+print(plotdens_ACAN)
+dev.off()
+
+plotdens_SOX9 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "SOX9", legend_title = "Chondrocyte SOX9", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_SOX9.jpg", width = 2400, height = 2400)
+print(plotdens_SOX9)
+dev.off()
+
+plotdens_TWIST2 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "TWIST2", legend_title = "Fibroblast TWIST2", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_TWIST2.jpg", width = 2400, height = 2400)
+print(plotdens_TWIST2)
+dev.off()
+
+plotdens_DPT <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "DPT", legend_title = "Fibroblast DPT", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_DPT.jpg", width = 2400, height = 2400)
+print(plotdens_DPT)
+dev.off()
+
+plotdens_KRT5 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "KRT5", legend_title = "Skin KRT5", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_KRT5.jpg", width = 2400, height = 2400)
+print(plotdens_KRT5)
+dev.off()
+
+plotdens_MPZ <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "MPZ", legend_title = "Schwann MPZ", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_MPZ.jpg", width = 2400, height = 2400)
+print(plotdens_MPZ)
+dev.off()
+
+plotdens_PECAM1 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "PECAM1", legend_title = "Endothelium PECAM1", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_PECAM1.jpg", width = 2400, height = 2400)
+print(plotdens_PECAM1)
+dev.off()
+
+plotdens_TTN <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "TTN", legend_title = "Myocytes TTN", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_TTN.jpg", width = 2400, height = 2400)
+print(plotdens_TTN)
+dev.off()
+
+plotdens_STMN2 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "STMN2", legend_title = "Neuron STMN2", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_STMN2.jpg", width = 2400, height = 2400)
+print(plotdens_STMN2)
+dev.off()
+
+plotdens_GPM6A <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "GPM6A", legend_title = "Neuron GPM6A", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_GPM6A.jpg", width = 2400, height = 2400)
+print(plotdens_GPM6A)
+dev.off()
+
+plotdens_MLANA <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "MLANA", legend_title = "Melanocytes MLANA", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_MLANA.jpg", width = 2400, height = 2400)
+print(plotdens_MLANA)
+dev.off()
+
+plotdens_STRC <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "STRC", legend_title = "Hair cells STRC", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_STRC.jpg", width = 2400, height = 2400)
+print(plotdens_STRC)
+dev.off()
+
+plotdens_PDGFRB <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "PDGFRB", legend_title = "Pericytes PDGFRB", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_PDGFRB.jpg", width = 2400, height = 2400)
+print(plotdens_PDGFRB)
+dev.off()
+
+plotdens_MKI67 <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "MKI67", legend_title = "Cycling MKI67", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_MKI67.jpg", width = 2400, height = 2400)
+print(plotdens_MKI67)
+dev.off()
+
+plotdens_OTOR <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP_7, "OTOR", legend_title = "POM OTOR", pal = "inferno", size = 10)  & NoAxes() & NoLegend()
+jpeg("plotdens_OTOR.jpg", width = 2400, height = 2400)
+print(plotdens_OTOR)
+dev.off()
+```
+
+## Create images for publication
+```{r}
+DefaultAssay(IEO_SCT_ccmiri_PCA30_UMAP_simple) <- "RNA"
+```
+
+### Analyses of myocyte population
+```{r Myocyte population analyses}
+Vln_Cardiacprog <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("NKX2-5", "ISL1", "PITX2"), combine = TRUE, ncol = 2)
+Vln_Cardiacprog
+Vln_Cardiac <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MYH6", "MYL4", "MYL7", "ACTC1", "TNNI3", "TNNT2", "MYBPC3", "CACNA1C", "AKAP6", "NES", "BVES", "ATP1A3", "CDH2", "MYZAP", "PKP2", "ART3", "FILIP1", "POPDC2", "RAB9B","SBK2","SHD"), combine = TRUE, ncol = 21)
+Vln_Cardiac
+Vln_Skeletal <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MYH2", "TNNT1", "MYBPC1", "MYOT", "RYR1", "CASQ1", "CAPN3", "JPH1", "AMPD1", "PYGM","CA3","ENO3","FAM166B", "KLHL40", "OR10AB1P", "PHKG1"), combine = TRUE, ncol = 16)
+Vln_Skeletal
+Vln_CardiacANDSkeletal <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MYH7", "MYL3", "TNNC1", "TPM3", "CAMK2B", "CASQ2", "HRC", "SRL", "CKM", "PGAM2","LDB3","MURC","ADSSL1", "HHATL", "C1ORF170", "SPTB"), combine = TRUE, ncol = 16)
+Vln_CardiacANDSkeletal
+Vln_Smooth <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("ACTG2", "MYH11", "FLNA", "CALD1", "CNN1"), combine = TRUE, ncol = 16)
+Vln_Smooth
+Vln_Cardiac2 <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MYL7", "NPPA", "TNNI3", "NPPB", "TNNT2", "MYBPC3", "MYL4", "MYBPHL", "MYH6", "LRRC20", "ACTC1", "RD3L"), combine = TRUE, ncol = 16)
+Vln_Cardiac2
+Vln_Skeletal2 <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("IDI2", "DUPD1", "MYH1", "LRRC30", "MYH4", "SMTNL1", "ACTN3", "PPP1R27", "MYADML2", "ANKRD23", "UCP3", "CHRNA10"), combine = TRUE, ncol = 16)
+Vln_Skeletal2
+Vln_Skeletalprogenitor <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MSGN1", "TBX6", "PAX7", "MYF5", "PAX3","MYOD1", "MYOG","TTN", "MYH3", "MYH2", "MEF2C","DMD","MYH7"), combine = TRUE, ncol = 16)
+Vln_Skeletalprogenitor
+
+Vln_Presomite <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("TBX6", "MSGN1", "T", "MESP1", "CDX2"), split.by = "technique",combine = TRUE, ncol = 16)
+Vln_earlyMyoblast <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("PAX7", "MYF5", "CD271", "EYA2", "EVC", "MYF5", "ZEB2", "TWIST1"), split.by = "technique", combine = TRUE, ncol = 16)                          
+Vln_Myoblast <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("SIX4", "PITX3", "MYF6", "MSTN", "TMEM182"), split.by = "technique", combine = TRUE, ncol = 16)   
+Vln_Latemyogenesis <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MEF2C", "MYH7","MYH3","MYOD1", "TTN", "DMD"), split.by = "technique", split = TRUE, ncol = 16)
+Vln_Myotube <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MYH1", "MYL2", "MYH2", "ITGB1", "TMEM182"), split.by = "technique", combine = TRUE, ncol = 16)
+
+Vln_Presomite
+Vln_earlyMyoblast
+Vln_Myoblast
+Vln_Latemyogenesis
+Vln_Myotube
+```
+
+#### Images
+```{r Skeletal myocyte images}
+Fig_Vlnplot_Myogeneral <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("TNNC1", "TPM3", "SRL", "CKM", "LDB3"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 5) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Myogeneral
+jpeg("Fig_Vlnplot_Myogeneral.jpg", width = 1000, height = 300)
+print(Fig_Vlnplot_Myogeneral)
+dev.off()
+
+Fig_Vlnplot_Skeletal <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("TNNT1", "MYBPC1", "MYOT", "RYR1", "JPH1"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 5) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Skeletal
+jpeg("Fig_Vlnplot_Skeletal.jpg", width = 1000, height = 300)
+print(Fig_Vlnplot_Skeletal)
+dev.off()
+
+Fig_Vlnplot_Smooth <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("ACTA2", "MYOCD", "MYH11"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 3) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Smooth
+jpeg("Fig_Vlnplot_Smooth.jpg", width = 600, height = 300)
+print(Fig_Vlnplot_Smooth)
+dev.off()
+
+Fig_Vlnplot_Cardiac <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MYH6", "MYL7", "TNNI3", "MYBPC3", "CACNA1C"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 5) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Cardiac
+jpeg("Fig_Vlnplot_Cardiac.jpg", width = 1000, height = 300)
+print(Fig_Vlnplot_Cardiac)
+dev.off()
+
+Fig_Vlnplot_Cardiacandfetal <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("MYL4", "ACTC1", "TNNT2"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 3) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Cardiacandfetal
+jpeg("Fig_Vlnplot_Cardiacandfetal.jpg", width = 600, height = 300)
+print(Fig_Vlnplot_Cardiacandfetal)
+dev.off()
+
+## Subsetting for Nebulosa plots
+IEO_Myo <- subset(IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes")
+
+plotdens_MYO_PAX7 <- plot_density(IEO_Myo, "PAX7", legend_title = "Myogenic precursor", pal = "inferno", size = 4)  & NoAxes() & NoLegend()
+jpeg("plotdens_MYO_PAX7.jpg", width = 600, height = 600)
+print(plotdens_MYO_PAX7)
+dev.off()
+plotdens_MYO_MYOD1 <- plot_density(IEO_Myo, "MYOD1", legend_title = "Myogenic precursor", pal = "inferno", size = 4)  & NoAxes() & NoLegend()
+jpeg("plotdens_MYO_MYOD1.jpg", width = 600, height = 600)
+print(plotdens_MYO_MYOD1)
+dev.off()
+plotdens_MYO_MYOG <- plot_density(IEO_Myo, "MYOG", legend_title = "Myogenic precursor", pal = "inferno", size = 4)  & NoAxes() & NoLegend()
+jpeg("plotdens_MYO_MYOG.jpg", width = 600, height = 600)
+print(plotdens_MYO_MYOG)
+dev.off()
+plotdens_MYO_MYL2 <- plot_density(IEO_Myo, "MYL2", legend_title = "Myogenic precursor", pal = "inferno", size = 4)  & NoAxes() & NoLegend()
+jpeg("plotdens_MYO_MYL2.jpg", width = 600, height = 600)
+print(plotdens_MYO_MYL2)
+dev.off()
+plotdens_MYO_MYH2 <- plot_density(IEO_Myo, "MYH2", legend_title = "Myogenic precursor", pal = "inferno", size = 4)  & NoAxes() & NoLegend()
+jpeg("plotdens_MYO_MYH2.jpg", width = 600, height = 600)
+print(plotdens_MYO_MYH2)
+dev.off()
+plotdens_MYO_MYH7 <- plot_density(IEO_Myo, "MYH7", legend_title = "Myogenic precursor", pal = "inferno", size = 4)  & NoAxes() & NoLegend()
+jpeg("plotdens_MYO_MYH7.jpg", width = 600, height = 600)
+print(plotdens_MYO_MYH7)
+dev.off()
+plotdens_MYO_ITBG1 <- plot_density(IEO_Myo, "ITGB1", legend_title = "Myogenic precursor", pal = "inferno", size = 4)  & NoAxes() & NoLegend()
+jpeg("plotdens_MYO_ITBG1.jpg", width = 600, height = 600)
+print(plotdens_MYO_ITBG1)
+dev.off()
+
+## Cranial versus caudal identity of skeletal myocytes
+Fig_Vlnplot_Myoidentity <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Skeletal myocytes", features = c("PAX3", "TBX1", "PITX2"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 3) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Myoidentity
+jpeg("Fig_Vlnplot_Myoidentity.jpg", width = 600, height = 300)
+print(Fig_Vlnplot_Myoidentity)
+dev.off()
+```
+
+### Analyses of chondrocytes
+```{r Chondrocyte images}
+Fig_Vlnplot_Chondrogenic <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Chondrocytes", features = c("MATN4", "ACAN", "COL9A1", "SOX6", "SOX9", "COL2A1"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 7) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Chondrogenic
+jpeg("Fig_Vlnplot_Chondrogenic.jpg", width = 1400, height = 300)
+print(Fig_Vlnplot_Chondrogenic)
+dev.off()
+
+Fig_Vlnplot_Chondro_Hypertrophic <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Chondrocytes", features = c("COL10A1"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 7) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Chondro_Hypertrophic
+jpeg("Fig_Vlnplot_Chondro_Hypertrophic.jpg", width = 200, height = 300)
+print(Fig_Vlnplot_Chondro_Hypertrophic)
+dev.off()
+
+Fig_Vlnplot_Chondro_Osteogenic <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Chondrocytes", features = c("COL1A1"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 7) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Chondro_Osteogenic
+jpeg("Fig_Vlnplot_Chondro_Osteogenic.jpg", width = 200, height = 300)
+print(Fig_Vlnplot_Chondro_Osteogenic)
+dev.off()
+
+Fig_Vlnplot_Chondro_early <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Chondrocytes", features = c("IGFBP5"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 7) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Chondro_Osteogenic
+jpeg("Fig_Vlnplot_Chondro_early.jpg", width = 200, height = 300)
+print(Fig_Vlnplot_Chondro_early)
+dev.off()
+
+Fig_Vlnplot_Chondro_earlymature <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Chondrocytes", features = c("CNMD", "EPYC", "FRZB"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 3) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Chondro_earlymature
+jpeg("Fig_Vlnplot_Chondro_earlymature.jpg", width = 600, height = 300)
+print(Fig_Vlnplot_Chondro_earlymature)
+dev.off()
+
+Fig_Vlnplot_Chondro_hypertrophic <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Chondrocytes", features = c("ISG15", "IFI6", "MX1"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 3) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Chondro_hypertrophic
+jpeg("Fig_Vlnplot_Chondro_hypertrophic.jpg", width = 600, height = 300)
+print(Fig_Vlnplot_Chondro_hypertrophic)
+dev.off()
+```
+
+### Analyses of endothelial cells
+```{r Endothelial cell images}
+Fig_Vlnplot_Endothelial_canonical <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Endothelial cells", features = c("PECAM1", "CDH5", "CLDN5", "ERG"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 4) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Endothelial_canonical
+jpeg("Fig_Vlnplot_Endothelial_canonical.jpg", width = 800, height = 300)
+print(Fig_Vlnplot_Endothelial_canonical)
+dev.off()
+
+Fig_Vlnplot_Endothelial_lymphatic <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Endothelial cells", features = c("PROX1", "PDPN", "LYVE1", "FLT4"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 4) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Endothelial_lymphatic
+jpeg("Fig_Vlnplot_Endothelial_lymphatic.jpg", width = 800, height = 300)
+print(Fig_Vlnplot_Endothelial_lymphatic)
+dev.off()
+
+Fig_Vlnplot_Endothelial_vascular <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Endothelial cells", features = c("ENG", "VWF", "NOTCH4", "NRP1"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 4) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Endothelial_vascular
+jpeg("Fig_Vlnplot_Endothelial_vascular.jpg", width = 800, height = 300)
+print(Fig_Vlnplot_Endothelial_vascular)
+dev.off()
+```
+
+### Analyses of pericytes
+```{r Pericyte images}
+Fig_Vlnplot_Pericytes <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Pericytes", features = c("PDGFRB", "NG2", "ACTA2", "DES","VIM", "RGS5", "MCAM", "ABCC9", "KCNJ8"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 9) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Pericytes
+jpeg("Fig_Vlnplot_Pericytes.jpg", width = 1800, height = 300)
+print(Fig_Vlnplot_Pericytes)
+dev.off()
+```
+
+### Analyses of melanocytes
+```{r Melanocyte images}
+Fig_Vlnplot_Melancotes <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Melanocytes", features = c("SOX10", "EDNRB", "DCT", "MITF", "KIT", "PAX3", "EDNRB", "TYRP1", "TYR", "GPR143"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 10) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Melancotes
+jpeg("Fig_Vlnplot_Melancotes.jpg", width = 2000, height = 300)
+print(Fig_Vlnplot_Melancotes)
+dev.off()
+```
+
+## Analyses of Schwann cells
+```{r Schwann cell images}
+Fig_Vlnplot_Schwann1 <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Schwann cells", features = c("SOX10", "ERBB3", "S100B", "PLP1", "NGFR", "NCAM1", "L1CAM", "CDH2"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 8) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Schwann1
+jpeg("Fig_Vlnplot_Schwann1.jpg", width = 1600, height = 300)
+print(Fig_Vlnplot_Schwann1)
+dev.off()
+
+Fig_Vlnplot_Schwann2 <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Schwann cells", features = c("POU3F1", "CDKN1C", "MPZ", "PTN", "CRYAB"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 5) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Schwann2
+jpeg("Fig_Vlnplot_Schwann2.jpg", width = 1000, height = 300)
+print(Fig_Vlnplot_Schwann2)
+dev.off()
+```
+
+### Analyses of keratinocytes
+```{r Keratinocyte images}
+Fig_Vlnplot_Keratinocytes <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Keratinocytes", features = c("KRT5", "KRT19"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 2) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Keratinocytes
+jpeg("Fig_Vlnplot_Keratinocytes.jpg", width = 400, height = 300)
+print(Fig_Vlnplot_Keratinocytes)
+dev.off()
+
+## Subsetting for Nebulosa plots
+IEO_Keratinocytes <- subset(IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Keratinocytes")
+
+plotdens_Keratinocytes_CXCL14 <- plot_density(IEO_Keratinocytes, "CXCL14", pal = "inferno", size = 6)  +xlim(-7,2) +ylim(-15.5,-6.5) & NoAxes() & NoLegend()
+plotdens_Keratinocytes_CXCL14
+jpeg("plotdens_Keratinocytes_CXCL14.jpg", width = 600, height = 600)
+print(plotdens_Keratinocytes_CXCL14)
+dev.off()
+plotdens_Keratinocytes_KRT1 <- plot_density(IEO_Keratinocytes, "KRT1", pal = "inferno", size = 6)  +xlim(-7,2) +ylim(-15.5,-6.5) & NoAxes() & NoLegend()
+plotdens_Keratinocytes_KRT1
+jpeg("plotdens_Keratinocytes_KRT1.jpg", width = 600, height = 600)
+print(plotdens_Keratinocytes_KRT1)
+dev.off()
+plotdens_Keratinocytes_KRT4 <- plot_density(IEO_Keratinocytes, "KRT4", pal = "inferno", size = 6)  +xlim(-7,2) +ylim(-15.5,-6.5) & NoAxes() & NoLegend()
+plotdens_Keratinocytes_KRT4
+jpeg("plotdens_Keratinocytes_KRT4.jpg", width = 600, height = 600)
+print(plotdens_Keratinocytes_KRT4)
+dev.off()
+```
+
+### Analyses of fibroblasts
+```{r Fibroblast images}
+Fig_Vlnplot_Fibroblasts <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Fibroblasts", features = c("COL1A1","PDGFRA", "TWIST2", "APCDD1", "DPT"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 5) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Fibroblasts
+jpeg("Fig_Vlnplot_Fibroblasts.jpg", width = 1000, height = 300)
+print(Fig_Vlnplot_Fibroblasts)
+dev.off()
+```
+
+### Analyses of neuroepithelial cells
+```{r Neuroepithelial cell images}
+Fig_Vlnplot_Neuroepi <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Neuroepithelial cells", features = c("GPM6A","TUBB3", "RBFOX3", "SYP", "DLG4", "MAP2"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 6) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Neuroepi
+jpeg("Fig_Vlnplot_Neuroepi.jpg", width = 1200, height = 300)
+print(Fig_Vlnplot_Neuroepi)
+dev.off()
+
+## Subsetting for Nebulosa plots
+IEO_Neuro <- subset(IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Neuroepithelial cells")
+
+plotdens_neuro_SOX2 <- plot_density(IEO_Neuro, "SOX2", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4)  +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_SOX2
+jpeg("plotdens_neuro_SOX2.jpg", width = 600, height = 600)
+print(plotdens_neuro_SOX2)
+dev.off()
+plotdens_neuro_PRPH <- plot_density(IEO_Neuro, "PRPH", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_PRPH
+jpeg("plotdens_neuro_PRPH.jpg", width = 600, height = 600)
+print(plotdens_neuro_PRPH)
+dev.off()
+plotdens_neuro_DCX <- plot_density(IEO_Neuro, "DCX", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_DCX
+jpeg("plotdens_neuro_DCX.jpg", width = 600, height = 600)
+print(plotdens_neuro_DCX)
+dev.off()
+plotdens_neuro_GPM6A <- plot_density(IEO_Neuro, "GPM6A", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_GPM6A
+jpeg("plotdens_neuro_GPM6A.jpg", width = 600, height = 600)
+print(plotdens_neuro_GPM6A)
+dev.off()
+plotdens_neuro_GABA <- plot_density(IEO_Neuro, "GAD2", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4)  +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_GABA
+jpeg("plotdens_neuro_GABA.jpg", width = 600, height = 600)
+print(plotdens_neuro_GABA)
+dev.off()
+plotdens_neuro_Gluta <- plot_density(IEO_Neuro, "SLC17A6", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_Gluta
+jpeg("plotdens_neuro_Gluta.jpg", width = 600, height = 600)
+print(plotdens_neuro_Gluta)
+dev.off()
+plotdens_neuro_generalneuron_SNAP25 <- plot_density(IEO_Neuro, "SNAP25", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_generalneuron_SNAP25
+jpeg("plotdens_neuro_generalneuron_SNAP25.jpg", width = 600, height = 600)
+print(plotdens_neuro_generalneuron_SNAP25)
+dev.off()
+plotdens_neuro_generalneuron_NDRG4 <- plot_density(IEO_Neuro, "NDRG4", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_generalneuron_NDRG4
+jpeg("plotdens_neuro_generalneuron_NDRG4.jpg", width = 600, height = 600)
+print(plotdens_neuro_generalneuron_NDRG4)
+dev.off()
+plotdens_neuro_generalneuron_STMN3 <- plot_density(IEO_Neuro, "STMN3", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_generalneuron_STMN3
+jpeg("plotdens_neuro_generalneuron_STMN3.jpg", width = 600, height = 600)
+print(plotdens_neuro_generalneuron_STMN3)
+dev.off()
+plotdens_neuro_generalneuron_SNHG11 <- plot_density(IEO_Neuro, "SNHG11", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_generalneuron_SNHG11
+jpeg("plotdens_neuro_generalneuron_SNHG11.jpg", width = 600, height = 600)
+print(plotdens_neuro_generalneuron_SNHG11)
+dev.off()
+plotdens_neuro_generalneuron_ATP6V1G2 <- plot_density(IEO_Neuro, "ATP6V1G2", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_generalneuron_ATP6V1G2
+jpeg("plotdens_neuro_generalneuron_ATP6V1G2.jpg", width = 600, height = 600)
+print(plotdens_neuro_generalneuron_ATP6V1G2)
+dev.off()
+plotdens_neuro_PNS_TLX2 <- plot_density(IEO_Neuro, "TLX2", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_PNS_TLX2
+jpeg("plotdens_neuro_PNS_TLX2.jpg", width = 600, height = 600)
+print(plotdens_neuro_PNS_TLX2)
+dev.off()
+plotdens_neuro_PNS_PIRT <- plot_density(IEO_Neuro, "PIRT", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_PNS_PIRT
+jpeg("plotdens_neuro_PNS_PIRT.jpg", width = 600, height = 600)
+print(plotdens_neuro_PNS_PIRT)
+dev.off()
+plotdens_neuro_PNS_SGPP2 <- plot_density(IEO_Neuro, "SGPP2", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4)  +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_PNS_SGPP2
+jpeg("plotdens_neuro_PNS_SGPP2.jpg", width = 600, height = 600)
+print(plotdens_neuro_PNS_SGPP2)
+dev.off()
+plotdens_neuro_PNS_PRPH <- plot_density(IEO_Neuro, "PRPH", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_PNS_PRPH
+jpeg("plotdens_neuro_PNS_PRPH.jpg", width = 600, height = 600)
+print(plotdens_neuro_PNS_PRPH)
+dev.off()
+plotdens_neuro_PNS_GCNT2 <- plot_density(IEO_Neuro, "GCNT2", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_PNS_GCNT2
+jpeg("plotdens_neuro_PNS_GCNT2.jpg", width = 600, height = 600)
+print(plotdens_neuro_PNS_GCNT2)
+dev.off()
+plotdens_neuro_CNS_GRIN2B <- plot_density(IEO_Neuro, "GRIN2B", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4)  +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_CNS_GRIN2B
+jpeg("plotdens_neuro_CNS_GRIN2B.jpg", width = 600, height = 600)
+print(plotdens_neuro_CNS_GRIN2B)
+dev.off()
+plotdens_neuro_CNS_SLC12A5 <- plot_density(IEO_Neuro, "SLC12A5", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4)  & +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_CNS_SLC12A5
+jpeg("plotdens_neuro_CNS_SLC12A5.jpg", width = 600, height = 600)
+print(plotdens_neuro_CNS_SLC12A5)
+dev.off()
+plotdens_neuro_CNS_CX3CL1 <- plot_density(IEO_Neuro, "CX3CL1", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_CNS_CX3CL1
+jpeg("plotdens_neuro_CNS_CX3CL1.jpg", width = 600, height = 600)
+print(plotdens_neuro_CNS_CX3CL1)
+dev.off()
+plotdens_neuro_CNS_RASGRF1 <- plot_density(IEO_Neuro, "RASGRF1", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_CNS_RASGRF1
+jpeg("plotdens_neuro_CNS_RASGRF1.jpg", width = 600, height = 600)
+print(plotdens_neuro_CNS_RASGRF1)
+dev.off()
+plotdens_neuro_CNS_MATK <- plot_density(IEO_Neuro, "MATK", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_CNS_MATK
+jpeg("plotdens_neuro_CNS_MATK.jpg", width = 600, height = 600)
+print(plotdens_neuro_CNS_MATK)
+dev.off()
+plotdens_neuro_immature_IGFBPL1 <- plot_density(IEO_Neuro, "IGFBPL1", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_immature_IGFBPL1
+jpeg("plotdens_neuro_immature_IGFBPL1.jpg", width = 600, height = 600)
+print(plotdens_neuro_immature_IGFBPL1)
+dev.off()
+plotdens_neuro_immature_EOMES <- plot_density(IEO_Neuro, "EOMES", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_immature_EOMES
+jpeg("plotdens_neuro_immature_EOMES.jpg", width = 600, height = 600)
+print(plotdens_neuro_immature_EOMES)
+dev.off()
+plotdens_neuro_immature_MEX3A <- plot_density(IEO_Neuro, "MEX3A", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_immature_MEX3A
+jpeg("plotdens_neuro_immature_MEX3A.jpg", width = 600, height = 600)
+print(plotdens_neuro_immature_MEX3A)
+dev.off()
+plotdens_neuro_ionPNS_SCN7A <- plot_density(IEO_Neuro, "SCN7A", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_ionPNS_SCN7A
+jpeg("plotdens_neuro_ionPNS_SCN7A.jpg", width = 600, height = 600)
+print(plotdens_neuro_ionPNS_SCN7A)
+dev.off()
+plotdens_neuro_ionPNS_P2RX3 <- plot_density(IEO_Neuro, "P2RX3", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4)  +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_ionPNS_P2RX3
+jpeg("plotdens_neuro_ionPNS_P2RX3.jpg", width = 600, height = 600)
+print(plotdens_neuro_ionPNS_P2RX3)
+dev.off()
+plotdens_neuro_ionPNS_SCN10A <- plot_density(IEO_Neuro, "SCN10A", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4)  +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_ionPNS_SCN10A
+jpeg("plotdens_neuro_ionPNS_SCN10A.jpg", width = 600, height = 600)
+print(plotdens_neuro_ionPNS_SCN10A)
+dev.off()
+plotdens_neuro_ionPNS_SCN11A <- plot_density(IEO_Neuro, "SCN11A", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4) +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_ionPNS_SCN11A
+jpeg("plotdens_neuro_ionPNS_SCN11A.jpg", width = 600, height = 600)
+print(plotdens_neuro_ionPNS_SCN11A)
+dev.off()
+plotdens_neuro_ionPNS_TRPA1 <- plot_density(IEO_Neuro, "TRPA1", legend_title = "Neuroepithelial cells", pal = "inferno", size = 4)  +xlim(-10.75,-5.25) +ylim(-0,5.5) & NoAxes() & NoLegend()
+plotdens_neuro_ionPNS_TRPA1
+jpeg("plotdens_neuro_ionPNS_TRPA1.jpg", width = 600, height = 600)
+print(plotdens_neuro_ionPNS_TRPA1)
+dev.off()
+```
+
+### Analyses of ependymal cells
+```{r Ependymal cell iamges}
+Fig_Vlnplot_Ependymal <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Ependymal cells", features = c("FOXJ1","PIFO", "DYNLRB2", "TTR"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 4) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Ependymal
+jpeg("Fig_Vlnplot_Ependymal.jpg", width = 800, height = 300)
+print(Fig_Vlnplot_Ependymal)
+dev.off()
+```
+
+### Analyses of pericytes
+```{r Pericyte images}
+Fig_Vlnplot_Pericytes <- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Pericytes", features = c("CSPG4","PDGFRB", "RGS5", "KCNJ8", "ABCC9"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 5) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Pericytes
+jpeg("Fig_Vlnplot_Pericytes.jpg", width = 1000, height = 300)
+print(Fig_Vlnplot_Pericytes)
+dev.off()
+```
+
+### Analyses of otic populations
+```{r Otic population images}
+Fig_Vlnplot_POM_main<- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Periotic mesenchymal cells", features = c("TBX18", "OTOR"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 6) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_POM_main
+jpeg("Fig_Vlnplot_POM_main.jpg", width = 400, height = 300)
+print(Fig_Vlnplot_POM_main)
+dev.off()
+
+Fig_Vlnplot_HC_main<- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Hair cells", features = c("MYO7A", "MYO6", "STRC", "POU4F3", "MYO15A","PCDH15", "USH2A","OTOF"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 6) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_HC_main
+jpeg("Fig_Vlnplot_HC_main.jpg", width = 1600, height = 300)
+print(Fig_Vlnplot_HC_main)
+dev.off()
+
+Fig_Vlnplot_Oticepi_main<- VlnPlot(object = IEO_SCT_ccmiri_PCA30_UMAP_simple, idents = "Otic epithelial cells", features = c("EPCAM", "SOX10", "PAX2", "PAX8", "OC90", "USH1C","OTOG"), split.by = "technique", split = TRUE, cols = c("#4d648d", "#2ca02c"), ncol = 6) & NoLegend() & theme(axis.title = element_blank())
+Fig_Vlnplot_Oticepi_main
+jpeg("Fig_Vlnplot_Oticepi_main.jpg", width = 1400, height = 300)
+print(Fig_Vlnplot_Oticepi_main)
+dev.off()
+```
+
+## Analyses of scRNAseq and snRNAseq seperately
+Visualisation of sc and sn data seperately. Clusters are simplified. Both UMAPS were generated using resolution .7 similar to the combined dataset.
+
+### scRNAseq
+```{r Load IEO_sc_SCT_ccmiri_PCA30_UMAP}
+IEO_sc_SCT_ccmiri_PCA30_UMAP_preidents <- readRDS("~/data/IEO_sc_SCT_ccmiri_PCA30_UMAP.rds")
+```
+
+```{r Cluster annotation sc}
+new.cluster.ids_sc <- c("Chondrocytes 1", "Fibroblasts", "Basal keratinocytes", "Mesenchymal cells 1", "Other keratinocytes", "Otic epithelial cells 1", "Mesenchymal cells 2", "Mesenchymal cells 3", "Pericytes", "Mesenchymal cells 4", "Periotic mesenchymal cells", "Chondrocytes 2", "Mesenchymal cells 5", "Precursor myoctyes", "Otic epithelial cells 2", "High ribosomal content", "Skeletal myocytes", "Schwann cells", "Chondrocytes 3", "Melanocytes", "Endothelial cells", "Ependymal cells", "Cycling cells 1", "Hair cells", "Cycling cells 2")
+names(new.cluster.ids_sc) <- levels(IEO_sc_SCT_ccmiri_PCA30_UMAP_preidents)
+IEO_sc_SCT_ccmiri_PCA30_UMAP <- RenameIdents(IEO_sc_SCT_ccmiri_PCA30_UMAP_preidents, new.cluster.ids_sc)
+```
+
+```{r Save IEO_sc_SCT_ccmiri_PCA30_UMAP with new annotations}
+saveRDS(IEO_sc_SCT_ccmiri_PCA30_UMAP, "~/output/IEO_sc_SCT_ccmiri_PCA30_UMAP.rds")
+```
+
+```{r Generate HeatMap sc}
+IEO_sc_SCT_ccmiri_PCA30_UMAP.markers <- read.csv("~/data/IEO_sc_SCT_ccmiri_PCA30_UMAP.markers.csv")
+sc_top5.markers <- IEO_sc_SCT_ccmiri_PCA30_UMAP.markers %>% group_by(cluster) %>% top_n(5, avg_log2FC)
+DefaultAssay(IEO_sc_SCT_ccmiri_PCA30_UMAP) <- "RNA"
+IEO_sc_SCT_ccmiri_PCA30_UMAP <-ScaleData(IEO_sc_SCT_ccmiri_PCA30_UMAP)
+top5_heatmap_sc_RNA <- DoHeatmap(object = IEO_sc_SCT_ccmiri_PCA30_UMAP, features = sc_top5.markers$gene, label = TRUE, size = .5)+ scale_fill_viridis(option="mako")
+
+pdf("sc_top5_heatmap_RNA.pdf", width = 32, height = 16)
+print(top5_heatmap_sc_RNA)
+dev.off()
+jpeg("sc_top5_heatmap_RNA.jpg", width = 7200, height = 4800)
+print(top5_heatmap_sc_RNA)
+dev.off()
+```
+
+#### UMAP scRNAseq
+Generate simplified UMAP
+```{r UMAP sc}
+new.cluster.ids_sc <- c("Chondrocytes", "Fibroblasts", "Keratinocytes", "Mesenchymal cells", "Keratinocytes", "Otic epithelial cells", "Mesenchymal cells", "Mesenchymal cells", "Pericytes", "Mesenchymal cells", "Periotic mesenchymal cells", "Chondrocytes", "Mesenchymal cells", "Skeletal myocytes", "Otic epithelial cells", "High ribosomal content", "Skeletal myocytes", "Schwann cells", "Chondrocytes", "Melanocytes", "Endothelial cells", "Ependymal cells", "Cycling cells", "Hair cells", "Cycling cells")
+names(new.cluster.ids_sc) <- levels(IEO_sc_SCT_ccmiri_PCA30_UMAP_preidents)
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply <- RenameIdents(IEO_sc_SCT_ccmiri_PCA30_UMAP_preidents, new.cluster.ids_sc)
+saveRDS(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, "~/output/IEO_sc_SCT_ccmiri_PCA30_UMAP_simply.rds")
+```
+
+```{r Setup colors for plotting sc}
+colors_sc_simple<-c("#0450fb", "#11aac4", "#4d648d", "#42e8f3", "#AEC7E8", "#2CA02C", "#daf400", "#ffdb00", "#723584", "#f9ae34", "#983b59", "#ffd3b6", "#9eccaf", "#ff8b94", "#e81f3f")
+```
+
+```{r Generate UMAP plots sc}
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, raster = FALSE) + ggtitle("UMAP plot") & NoAxes() &NoLegend()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot.pdf", width = 6, height = 6)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot)
+dev.off()
+
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, raster = FALSE, pt.size = 5) + ggtitle("UMAP plot") & NoAxes() &NoLegend()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot.jpg", width = 2400, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg)
+dev.off()
+
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_legend <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, raster = FALSE) + ggtitle("UMAP plot") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_legend.pdf", width = 8, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_legend)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_legend
+
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbyexperiment <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, split.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbyexperiment.pdf", width = 40, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbyexperiment)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbycellline <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, split.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbycellline.pdf", width = 19, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbycellline)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytimepoint <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, split.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytimepoint.pdf", width = 19, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytimepoint)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytechnique <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, split.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytechnique.pdf", width = 13, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytechnique)
+dev.off()
+
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbyexperiment <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, group.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbyexperiment.pdf", width = 7, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbyexperiment)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbycellline <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), group.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbycellline.pdf", width = 7, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbycellline)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytimepoint <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4", "#ff8b94"), group.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytimepoint.pdf", width = 7, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytimepoint)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytechnique <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4"), group.by = "technique", order = c("sn", "sc"), raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+pdf("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytechnique.pdf", width = 7, height = 4)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytechnique)
+dev.off()
+```
+
+```{r Generate UMAP plots .jpg sc}
+
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbyexperiment <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, pt.size = 5, split.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbyexperiment.jpg", width = 24000, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbyexperiment)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbycellline <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, pt.size = 5, split.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbycellline.jpg", width = 11400, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbycellline)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytimepoint <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, pt.size = 5, split.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytimepoint.jpg", width = 11400, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytimepoint)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytechnique <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, pt.size = 5, split.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytechnique.jpg", width = 7800, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytechnique)
+dev.off()
+
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbyexperiment <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sc_simple, pt.size = 5, group.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbyexperiment.jpg", width = 4200, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbyexperiment)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbycellline <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), pt.size = 5, group.by = "cellline", order = c("04i10", "H1 and 04i10", "WTC"), raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbycellline.jpg", width = 4200, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbycellline)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytimepoint <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), pt.size = 5, group.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytimepoint.jpg", width = 4200, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytimepoint)
+dev.off()
+IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytechnique <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4"), pt.size = 5, group.by = "technique", order = c("sn", "sc"), raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytechnique.jpg", width = 4200, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytechnique)
+dev.off()
+```
+
+#### Cluster analysis scRNAseq
+```{r Generate tables containing information on technique, cell line, timepoint and batch, both absolute (talbe.cluster.xxx) and relative (freq.cluster.xxx) sc}
+IEO_data_analyses_sc <- IEO_sc_SCT_ccmiri_PCA30_UMAP_simply
+
+table.cluster.experiment_sc <- table(IEO_data_analyses_sc@active.ident,IEO_data_analyses_sc@meta.data$experiment)
+freq.cluster.experiment_sc <-table.cluster.experiment_sc / rowSums(table.cluster.experiment_sc) 
+freq.experiment.cluster_sc <- sweep(table.cluster.experiment_sc, 2, colSums(table.cluster.experiment_sc), '/')
+freq.experiment.cluster_sc
+
+table.cluster.technique_sc <- table(IEO_data_analyses_sc@active.ident,IEO_data_analyses_sc@meta.data$technique)
+freq.cluster.technique_sc <- table.cluster.technique_sc / rowSums(table.cluster.technique_sc)
+freq.technique.cluster_sc <- sweep(table.cluster.technique_sc, 2, colSums(table.cluster.technique_sc), '/')
+
+table.cluster.timepoint_sc <- table(IEO_data_analyses_sc@active.ident,IEO_data_analyses_sc@meta.data$timepoint)
+freq.cluster.timepoint_sc <- table.cluster.timepoint_sc / rowSums(table.cluster.timepoint_sc) 
+freq.timepoint.cluster_sc <- sweep(table.cluster.timepoint_sc, 2, colSums(table.cluster.timepoint_sc), '/')
+
+table.cluster.cellline_sc <- table(IEO_data_analyses_sc@active.ident,IEO_data_analyses_sc@meta.data$cellline)
+freq.cluster.cellline_sc <- table.cluster.cellline_sc / rowSums(table.cluster.cellline_sc) 
+freq.cellline.cluster_sc <- sweep(table.cluster.cellline_sc, 2, colSums(table.cluster.cellline_sc), '/')
+
+table.cluster.method_sc <- table(IEO_data_analyses_sc@active.ident,IEO_data_analyses_sc@meta.data$method)
+freq.cluster.method_sc <- table.cluster.method_sc / rowSums(table.cluster.method_sc)
+freq.method.cluster_sc <- sweep(table.cluster.method_sc, 2, colSums(table.cluster.method_sc), '/')
+
+freq.experiment_sc <- prop.table(colSums(table.cluster.experiment_sc))
+freq.technique_sc <- prop.table(colSums(table.cluster.technique_sc))
+freq.timepoint_sc <- prop.table(colSums(table.cluster.timepoint_sc))
+freq.cellline_sc <- prop.table(colSums(table.cluster.cellline_sc))
+freq.cluster_sc <- prop.table(rowSums(table.cluster.experiment_sc)) 
+freq.method_sc <- prop.table(rowSums(table.cluster.method_sc)) 
+freq.experiment_sc
+freq.technique_sc
+freq.timepoint_sc
+freq.cellline_sc
+freq.cluster_sc
+freq.method_sc 
+```
+
+```{r Bar plot of frequency of cell clusters found within each experiment sc}
+df_sc_experiment <- as.data.frame.matrix(freq.experiment.cluster_sc) 
+df_sc_experiment["cluster"] <- rownames(df_sc_experiment)
+
+df_sc_experiment <- df_sc_experiment[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Ependymal cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial","Cycling", "High ribosomal content"),]
+
+df_sc_experiment <- gather(df_sc_experiment, "experiment", "frequency", c(1:(ncol(df_sc_experiment)-1)))
+df_sc_experiment$cluster <- factor(df_sc_experiment$cluster, levels = unique(df_sc_experiment$cluster)) 
+df_sc_experiment_plot_legend <- ggplot(data = df_sc_experiment) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))  
+pdf("df_sc_experiment_plot_legend.pdf", width = 7, height = 7)
+print(df_sc_experiment_plot_legend)
+dev.off()
+df_sc_experiment_plot_legend
+
+df_sc_experiment_plot <- ggplot(data = df_sc_experiment) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))    & NoAxes() & NoLegend()
+pdf("df_sc_experiment_plot.pdf", width = 2, height = 7)
+print(df_sc_experiment_plot)
+dev.off()
+jpeg("df_sc_experiment_plot.jpg", width = 1200, height = 1800)
+print(df_sc_experiment_plot)
+dev.off()
+df_sc_experiment_plot
+```
+
+```{r Generate barplot experiment combining both d100 SOX2 data sc}
+df_sc_lineanddayseparation <- as.data.frame.matrix(freq.experiment.cluster_sc) 
+df_sc_lineanddayseparation$d100_SOX2 <- rowMeans(df_sc_lineanddayseparation[,c(1,2)])
+df_sc_lineanddayseparation <- subset(df_sc_lineanddayseparation, select=-c(d100_SOX2_full, d100_SOX2_vibra))
+df_sc_lineanddayseparation["cluster"] <- rownames(df_sc_lineanddayseparation)
+
+df_sc_lineanddayseparation <- df_sc_lineanddayseparation[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Ependymal cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial","Cycling", "High ribosomal content"),]
+df_sc_lineanddayseparation[c("d75_GCAMP_vibra", "d75_SOX2_full", "d100_SOX2"),]
+
+df_sc_lineanddayseparation <- gather(df_sc_lineanddayseparation, "experiment", "frequency", c(1:(ncol(df_sc_lineanddayseparation)-1)))
+df_sc_lineanddayseparation 
+df_sc_lineanddayseparation$cluster <- factor(df_sc_lineanddayseparation$cluster, levels = unique(df_sc_lineanddayseparation$cluster)) 
+df_sc_lineanddayseparation <- mutate(df_sc_lineanddayseparation, experiment = fct_relevel(experiment, "d75_GCAMP_vibra", "d75_SOX2_full","d100_SOX2"))
+df_sc_lineanddayseparation_plot_legend <- ggplot(data = df_sc_lineanddayseparation) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))  
+pdf("df_sc_lineanddayseparation_plot_legend.pdf", width = 7, height = 7)
+print(df_sc_lineanddayseparation_plot_legend)
+dev.off()
+df_sc_lineanddayseparation_plot_legend
+
+df_sc_lineanddayseparation_plot <- ggplot(data = df_sc_lineanddayseparation) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))    & NoAxes() & NoLegend()
+pdf("df_sc_lineanddayseparation_plot.pdf", width = 2, height = 7)
+print(df_sc_lineanddayseparation_plot)
+dev.off()
+jpeg("df_sc_lineanddayseparation_plot.jpg", width = 1200, height = 1800)
+print(df_sc_lineanddayseparation_plot)
+dev.off()
+df_sc_lineanddayseparation_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each technique sc}
+df_sc_technique <- as.data.frame.matrix(freq.technique.cluster_sc) 
+df_sc_technique["cluster"] <- rownames(df_sc_technique)
+
+df_sc_technique <- df_sc_technique[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Ependymal cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial","Cycling", "High ribosomal content"),]
+
+df_sc_technique <- gather(df_sc_technique, "technique", "frequency", c(1:(ncol(df_sc_technique)-1)))
+df_sc_technique$cluster <- factor(df_sc_technique$cluster, levels = unique(df_sc_technique$cluster)) 
+df_sc_technique_plot_legend <- ggplot(data = df_sc_technique) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))     
+pdf("df_sc_technique_plot_legend.pdf", width = 7, height = 7)
+print(df_sc_technique_plot_legend)
+dev.off()
+df_sc_technique_plot_legend
+
+df_sc_technique_plot <- ggplot(data = df_sc_technique) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))    & NoAxes() & NoLegend()
+pdf("df_sc_technique_plot.pdf", width = 2, height = 7)
+print(df_sc_technique_plot)
+dev.off()
+jpeg("df_sc_technique_plot.jpg", width = 1200, height = 1800)
+print(df_sc_technique_plot)
+dev.off()
+df_sc_technique_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint sc}
+df_sc_timepoint <- as.data.frame.matrix(freq.timepoint.cluster_sc) 
+df_sc_timepoint["cluster"] <- rownames(df_sc_timepoint)
+
+df_sc_timepoint <- df_sc_timepoint[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Ependymal cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial","Cycling", "High ribosomal content"),]
+
+df_sc_timepoint <- gather(df_sc_timepoint, "timepoint", "frequency", c(1:(ncol(df_sc_timepoint)-1)))
+df_sc_timepoint$cluster <- factor(df_sc_timepoint$cluster, levels = unique(df_sc_timepoint$cluster)) 
+df_sc_timepoint_plot_legend <- ggplot(data = df_sc_timepoint) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))     
+pdf("df_sc_timepoint_plot_legend.pdf", width = 7, height = 7)
+print(df_sc_timepoint_plot_legend)
+dev.off()
+df_sc_timepoint_plot_legend
+
+df_sc_timepoint_plot <- ggplot(data = df_sc_timepoint) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))    & NoAxes() & NoLegend()
+pdf("df_sc_timepoint_plot.pdf", width = 2, height = 7)
+print(df_sc_timepoint_plot)
+dev.off() 
+jpeg("df_sc_timepoint_plot.jpg", width = 1200, height = 1800)
+print(df_sc_timepoint_plot)
+dev.off() 
+df_sc_timepoint_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each cellline sc}
+df_sc_cellline <- as.data.frame.matrix(freq.cellline.cluster_sc) 
+df_sc_cellline["cluster"] <- rownames(df_sc_cellline)
+
+df_sc_cellline <- df_sc_cellline[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Ependymal cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial","Cycling", "High ribosomal content"),]
+
+df_sc_cellline <- gather(df_sc_cellline, "cellline", "frequency", c(1:(ncol(df_sc_cellline)-1)))
+df_sc_cellline$cluster <- factor(df_sc_cellline$cluster, levels = unique(df_sc_cellline$cluster)) 
+df_sc_cellline_plot_legend <- ggplot(data = df_sc_cellline) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))     
+pdf("df_sc_cellline_plot_legend.pdf", width = 7, height = 7)
+print(df_sc_cellline_plot_legend)
+dev.off()
+df_sc_cellline_plot_legend
+
+df_sc_cellline_plot <- ggplot(data = df_sc_cellline) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))    & NoAxes() & NoLegend()
+pdf("df_sc_cellline_plot.pdf", width = 2, height = 7)
+print(df_sc_cellline_plot)
+dev.off() 
+jpeg("df_sc_cellline_plot.jpg", width = 1200, height = 1800)
+print(df_sc_cellline_plot)
+dev.off() 
+df_sc_cellline_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each method sc}
+df_sc_method <- as.data.frame.matrix(freq.method.cluster_sc) 
+df_sc_method["cluster"] <- rownames(df_sc_method)
+
+df_sc_method <- df_sc_method[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Ependymal cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Periotic mesenchymal cells","Hair cells","Endothelial","Cycling", "High ribosomal content"),]
+
+df_sc_method <- gather(df_sc_method, "method", "frequency", c(1:(ncol(df_sc_method)-1)))
+df_sc_method$cluster <- factor(df_sc_method$cluster, levels = unique(df_sc_method$cluster)) 
+df_sc_method_plot_legend <- ggplot(data = df_sc_method) + geom_bar(mapping = aes(x = method, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))     
+pdf("df_sc_method_plot_legend.pdf", width = 7, height = 7)
+print(df_sc_method_plot_legend)
+dev.off()
+df_sc_method_plot_legend
+
+df_sc_method_plot <- ggplot(data = df_sc_method) + geom_bar(mapping = aes(x = method, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8","#daf400","#e81f3f","#ffd3b6","#ff8b94", "#723584"))    & NoAxes() & NoLegend()
+pdf("df_sc_method_plot.pdf", width = 2, height = 7)
+print(df_sc_method_plot)
+dev.off() 
+jpeg("df_sc_method_plot.jpg", width = 1200, height = 1800)
+print(df_sc_method_plot)
+dev.off() 
+df_sc_method_plot
+```
+
+#### Large group analysis scRNAseq
+```{r Load ccmiri_PCA30_UMAP_7 for largegroup sc}
+IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup <- readRDS("~/data/IEO_sc_SCT_ccmiri_PCA30_UMAP.rds")
+```
+
+```{r new clusters for largegroup sc}
+new.cluster.ids_sc_largegroup <- c("Mesenchymal", "Mesenchymal", "Epithelial", "Mesenchymal", "Epithelial", "Otic", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Otic", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Otic", "High ribosomal content", "Mesenchymal", "Neuroectodermal", "Mesenchymal", "Neuroectodermal", "Endothelial","Neuroectodermal", "Cycling", "Otic", "Cycling")
+names(new.cluster.ids_sc_largegroup) <- levels(IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup)
+IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup <- RenameIdents(IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup, new.cluster.ids_sc_largegroup, colours(colors))
+```
+
+```{r Save ccmiri_PCA30_UMAP_7 with new annotations for largegroup sc}
+saveRDS(IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup, "~/output/IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup.rds")
+```
+
+```{r Generate tables containing information on technique, cell line, timepoint and batch, both absolute (talbe.cluster.xxx) and relative (freq.cluster.xxx) sc}
+IEO_data_analyses_sc_largegroup <- IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup
+
+table.cluster.experiment_sc_largegroup <- table(IEO_data_analyses_sc_largegroup@active.ident,IEO_data_analyses_sc_largegroup@meta.data$experiment)
+freq.cluster.experiment_sc_largegroup <-table.cluster.experiment_sc_largegroup / rowSums(table.cluster.experiment_sc_largegroup) 
+freq.experiment.cluster_sc_largegroup <- sweep(table.cluster.experiment_sc_largegroup, 2, colSums(table.cluster.experiment_sc_largegroup), '/')
+
+table.cluster.technique_sc_largegroup <- table(IEO_data_analyses_sc_largegroup@active.ident,IEO_data_analyses_sc_largegroup@meta.data$technique)
+freq.cluster.technique_sc_largegroup <- table.cluster.technique_sc_largegroup / rowSums(table.cluster.technique_sc_largegroup)
+freq.technique.cluster_sc_largegroup <- sweep(table.cluster.technique_sc_largegroup, 2, colSums(table.cluster.technique_sc_largegroup), '/')
+
+table.cluster.timepoint_sc_largegroup <- table(IEO_data_analyses_sc_largegroup@active.ident,IEO_data_analyses_sc_largegroup@meta.data$timepoint)
+freq.cluster.timepoint_sc_largegroup <- table.cluster.timepoint_sc_largegroup / rowSums(table.cluster.timepoint_sc_largegroup) 
+freq.timepoint.cluster_sc_largegroup <- sweep(table.cluster.timepoint_sc_largegroup, 2, colSums(table.cluster.timepoint_sc_largegroup), '/')
+
+table.cluster.cellline_sc_largegroup <- table(IEO_data_analyses_sc_largegroup@active.ident,IEO_data_analyses_sc_largegroup@meta.data$cellline)
+freq.cluster.cellline_sc_largegroup <- table.cluster.cellline_sc_largegroup / rowSums(table.cluster.cellline_sc_largegroup) 
+freq.cellline.cluster_sc_largegroup <- sweep(table.cluster.cellline_sc_largegroup, 2, colSums(table.cluster.cellline_sc_largegroup), '/')
+
+table.cluster.method_sc_largegroup <- table(IEO_data_analyses_sc_largegroup@active.ident,IEO_data_analyses_sc_largegroup@meta.data$method)
+freq.cluster.method_sc_largegroup <- table.cluster.method_sc_largegroup / rowSums(table.cluster.method_sc_largegroup) 
+freq.method.cluster_sc_largegroup <- sweep(table.cluster.method_sc_largegroup, 2, colSums(table.cluster.method_sc_largegroup), '/')
+
+freq.experiment_sc_largegroup <- prop.table(colSums(table.cluster.experiment_sc_largegroup))
+freq.technique_sc_largegroup  <- prop.table(colSums(table.cluster.technique_sc_largegroup))
+freq.timepoint_sc_largegroup  <- prop.table(colSums(table.cluster.timepoint_sc_largegroup))
+freq.cellline_sc_largegroup  <- prop.table(colSums(table.cluster.cellline_sc_largegroup))
+freq.cluster_sc_largegroup  <- prop.table(rowSums(table.cluster.experiment_sc_largegroup)) 
+freq.method_sc_largegroup  <- prop.table(colSums(table.cluster.method_sc_largegroup))
+freq.experiment_sc_largegroup 
+freq.technique_sc_largegroup 
+freq.timepoint_sc_largegroup 
+freq.cellline_sc_largegroup 
+freq.cluster_sc_largegroup
+freq.method_sc_largegroup 
+```
+
+```{r Load ccmiri_PCA30_UMAP_7 with new annotations _largegroup}
+IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup <- readRDS("~/output/IEO_sc_SCT_ccmiri_PCA30_UMAP_largegroup.rds")
+```
+
+```{r Bar plot of frequency of cell clusters found within each experiment _sc_largegroup}
+df_experiment_sc_largegroup <- as.data.frame.matrix(freq.experiment.cluster_sc_largegroup) 
+df_experiment_sc_largegroup["cluster"] <- rownames(df_experiment_sc_largegroup)
+
+df_experiment_sc_largegroup <- df_experiment_sc_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling", "High ribosomal content"),]
+
+df_experiment_sc_largegroup <- gather(df_experiment_sc_largegroup, "experiment", "frequency", c(1:(ncol(df_experiment_sc_largegroup)-1)))
+df_experiment_sc_largegroup$cluster <- factor(df_experiment_sc_largegroup$cluster, levels = unique(df_experiment_sc_largegroup$cluster)) 
+df_experiment_sc_largegroup_plot_legend <- ggplot(data = df_experiment_sc_largegroup) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))
+pdf("df_experiment_sc_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_experiment_sc_largegroup_plot_legend)
+dev.off()
+df_experiment_sc_largegroup_plot_legend
+
+df_experiment_sc_largegroup_plot <- ggplot(data = df_experiment_sc_largegroup) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))   & NoAxes() & NoLegend()
+pdf("df_experiment_sc_largegroup_plot.pdf", width = 2, height = 7)
+print(df_experiment_sc_largegroup_plot)
+dev.off()
+jpeg("df_experiment_sc_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_experiment_sc_largegroup_plot)
+dev.off()
+df_experiment_sc_largegroup_plot
+
+```
+
+```{r Generate barplot experiment combining both d100 SOX2 data _sc_largegroup}
+df_sc_largegroup_lineanddayseparation <- as.data.frame.matrix(freq.experiment.cluster_sc_largegroup) 
+df_sc_largegroup_lineanddayseparation$d100_SOX2 <- rowMeans(df_sc_largegroup_lineanddayseparation[,c(1,2)])
+df_sc_largegroup_lineanddayseparation <- subset(df_sc_largegroup_lineanddayseparation, select=-c(d100_SOX2_full, d100_SOX2_vibra))
+df_sc_largegroup_lineanddayseparation["cluster"] <- rownames(df_sc_largegroup_lineanddayseparation)
+
+df_sc_largegroup_lineanddayseparation <- df_sc_largegroup_lineanddayseparation[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling", "High ribosomal content"),]
+
+df_sc_largegroup_lineanddayseparation <- gather(df_sc_largegroup_lineanddayseparation, "experiment", "frequency", c(1:(ncol(df_sc_largegroup_lineanddayseparation)-1)))
+df_sc_largegroup_lineanddayseparation 
+df_sc_largegroup_lineanddayseparation$cluster <- factor(df_sc_largegroup_lineanddayseparation$cluster, levels = unique(df_sc_largegroup_lineanddayseparation$cluster)) 
+df_sc_largegroup_lineanddayseparation
+
+df_sc_largegroup_lineanddayseparation <- mutate(df_sc_largegroup_lineanddayseparation, experiment = fct_relevel(experiment, "d75_GCAMP_vibra", "d75_SOX2_full","d100_SOX2"))
+df_sc_largegroup_lineanddayseparation_plot_legend <- ggplot(data = df_sc_largegroup_lineanddayseparation) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))
+df_sc_largegroup_lineanddayseparation_plot_legend
+pdf("df_sc_largegroup_lineanddayseparation_plot_legend.pdf", width = 7, height = 7)
+print(df_sc_largegroup_lineanddayseparation_plot_legend)
+dev.off()
+df_sc_largegroup_lineanddayseparation_plot_legend
+
+df_sc_largegroup_lineanddayseparation_plot <- ggplot(data = df_sc_largegroup_lineanddayseparation) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))   & NoAxes() & NoLegend()
+
+pdf("df_sc_largegroup_lineanddayseparation_plot.pdf", width = 2, height = 7)
+print(df_sc_largegroup_lineanddayseparation_plot)
+dev.off()
+jpeg("df_sc_largegroup_lineanddayseparation_plot.jpg", width = 1200, height = 1800)
+print(df_sc_largegroup_lineanddayseparation_plot)
+dev.off()
+df_sc_largegroup_lineanddayseparation_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each technique _sc_largegroup}
+df_technique_sc_largegroup <- as.data.frame.matrix(freq.technique.cluster_sc_largegroup) 
+df_technique_sc_largegroup["cluster"] <- rownames(df_technique_sc_largegroup)
+
+df_technique_sc_largegroup <- df_technique_sc_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling", "High ribosomal content"),]
+
+df_technique_sc_largegroup <- gather(df_technique_sc_largegroup, "technique", "frequency", c(1:(ncol(df_technique_sc_largegroup)-1)))
+df_technique_sc_largegroup$cluster <- factor(df_technique_sc_largegroup$cluster, levels = unique(df_technique_sc_largegroup$cluster)) 
+df_technique_sc_largegroup_plot_legend <- ggplot(data = df_technique_sc_largegroup) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))   
+pdf("df_technique_sc_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_technique_sc_largegroup_plot_legend)
+dev.off()
+df_technique_sc_largegroup_plot_legend
+
+df_technique_sc_largegroup_plot <- ggplot(data = df_technique_sc_largegroup) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))  & NoAxes() & NoLegend()
+pdf("df_technique_sc_largegroup_plot.pdf", width = 2, height = 7)
+print(df_technique_sc_largegroup_plot)
+dev.off()
+jpeg("df_technique_sc_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_technique_sc_largegroup_plot)
+dev.off()
+df_technique_sc_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint _sc_largegroup}
+df_timepoint_sc_largegroup <- as.data.frame.matrix(freq.timepoint.cluster_sc_largegroup) 
+df_timepoint_sc_largegroup["cluster"] <- rownames(df_timepoint_sc_largegroup)
+
+df_timepoint_sc_largegroup <- df_timepoint_sc_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling", "High ribosomal content"),]
+
+df_timepoint_sc_largegroup <- gather(df_timepoint_sc_largegroup, "timepoint", "frequency", c(1:(ncol(df_timepoint_sc_largegroup)-1)))
+df_timepoint_sc_largegroup$cluster <- factor(df_timepoint_sc_largegroup$cluster, levels = unique(df_timepoint_sc_largegroup$cluster)) 
+df_timepoint_sc_largegroup_plot_legend <- ggplot(data = df_timepoint_sc_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))    
+pdf("df_timepoint_sc_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_timepoint_sc_largegroup_plot_legend)
+dev.off()
+df_timepoint_sc_largegroup_plot_legend
+
+df_timepoint_sc_largegroup_plot <- ggplot(data = df_timepoint_sc_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))  & NoAxes() & NoLegend()
+pdf("df_timepoint_sc_largegroup_plot.pdf", width = 2, height = 7)
+print(df_timepoint_sc_largegroup_plot)
+dev.off() 
+jpeg("df_timepoint_sc_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_timepoint_sc_largegroup_plot)
+dev.off() 
+df_timepoint_sc_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each cellline _sc_largegroup}
+df_cellline_sc_largegroup <- as.data.frame.matrix(freq.cellline.cluster_sc_largegroup) 
+df_cellline_sc_largegroup["cluster"] <- rownames(df_cellline_sc_largegroup)
+
+df_cellline_sc_largegroup <- df_cellline_sc_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling", "High ribosomal content"),]
+
+df_cellline_sc_largegroup <- gather(df_cellline_sc_largegroup, "cellline", "frequency", c(1:(ncol(df_cellline_sc_largegroup)-1)))
+df_cellline_sc_largegroup$cluster <- factor(df_cellline_sc_largegroup$cluster, levels = unique(df_cellline_sc_largegroup$cluster)) 
+df_cellline_sc_largegroup_plot_legend <- ggplot(data = df_cellline_sc_largegroup) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))  
+pdf("df_cellline_sc_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_cellline_sc_largegroup_plot_legend)
+dev.off()
+df_cellline_sc_largegroup_plot_legend
+
+df_cellline_sc_largegroup_plot <- ggplot(data = df_cellline_sc_largegroup) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))   & NoAxes() & NoLegend()
+pdf("df_cellline_sc_largegroup_plot.pdf", width = 2, height = 7)
+print(df_cellline_sc_largegroup_plot)
+dev.off() 
+jpeg("df_cellline_sc_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_cellline_sc_largegroup_plot)
+dev.off() 
+df_cellline_sc_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each method _sc_largegroup}
+df_method_sc_largegroup <- as.data.frame.matrix(freq.method.cluster_sc_largegroup) 
+df_method_sc_largegroup["cluster"] <- rownames(df_method_sc_largegroup)
+
+df_method_sc_largegroup <- df_method_sc_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic", "Cycling", "High ribosomal content"),]
+
+df_method_sc_largegroup <- gather(df_method_sc_largegroup, "method", "frequency", c(1:(ncol(df_method_sc_largegroup)-1)))
+df_method_sc_largegroup$cluster <- factor(df_method_sc_largegroup$cluster, levels = unique(df_method_sc_largegroup$cluster)) 
+df_method_sc_largegroup_plot_legend <- ggplot(data = df_method_sc_largegroup) + geom_bar(mapping = aes(x = method, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))  
+pdf("df_method_sc_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_method_sc_largegroup_plot_legend)
+dev.off()
+df_method_sc_largegroup_plot_legend
+
+df_method_sc_largegroup_plot <- ggplot(data = df_method_sc_largegroup) + geom_bar(mapping = aes(x = method, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f" ,"#e81f3f", "#b8b8b8", "#dedede"))   & NoAxes() & NoLegend()
+pdf("df_method_sc_largegroup_plot.pdf", width = 2, height = 7)
+print(df_method_sc_largegroup_plot)
+dev.off() 
+jpeg("df_method_sc_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_method_sc_largegroup_plot)
+dev.off() 
+df_method_sc_largegroup_plot
+```
+
+#### Gene marker analyses scRNAseq
+```{r Gene marker analyses sc}
+plot_density_sc_CDH1 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "CDH1", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_CDH1.jpg", width = 450, height = 450)
+print(plot_density_sc_CDH1)
+dev.off()
+plot_density_sc_EPCAM <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "EPCAM", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_EPCAM.jpg", width = 450, height = 450)
+print(plot_density_sc_EPCAM)
+dev.off()
+plot_density_sc_PRRX1 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "PRRX1", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_PRRX1.jpg", width = 450, height = 450)
+print(plot_density_sc_PRRX1)
+dev.off()
+plot_density_sc_OC90 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "OC90", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_OC90.jpg", width = 450, height = 450)
+print(plot_density_sc_OC90)
+dev.off()
+plot_density_sc_ACAN <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "ACAN",  pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_ACAN.jpg", width = 450, height = 450)
+print(plot_density_sc_ACAN)
+dev.off()
+plot_density_sc_SOX9 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "SOX9", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_SOX9.jpg", width = 450, height = 450)
+print(plot_density_sc_SOX9)
+dev.off()
+plot_density_sc_TWIST2 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "TWIST2", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_TWIST2.jpg", width = 450, height = 450)
+print(plot_density_sc_TWIST2)
+dev.off()
+plot_density_sc_DPT <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "DPT", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_DPT.jpg", width = 450, height = 450)
+print(plot_density_sc_DPT)
+dev.off()
+plot_density_sc_KRT5 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "KRT5", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_KRT5.jpg", width = 450, height = 450)
+print(plot_density_sc_KRT5)
+dev.off()
+plot_density_sc_MPZ <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "MPZ", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_MPZ.jpg", width = 450, height = 450)
+print(plot_density_sc_MPZ)
+dev.off()
+plot_density_sc_PECAM1 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "PECAM1", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_PECAM1.jpg", width = 450, height = 450)
+print(plot_density_sc_PECAM1)
+dev.off()
+plot_density_sc_TTN <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "TTN", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_TTN.jpg", width = 450, height = 450)
+print(plot_density_sc_TTN)
+dev.off()
+plot_density_sc_SGCA <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "SGCA", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_SGCA.jpg", width = 450, height = 450)
+print(plot_density_sc_SGCA)
+dev.off()
+plot_density_sc_ACTC1 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "ACTC1", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_ACTC1.jpg", width = 450, height = 450)
+print(plot_density_sc_ACTC1)
+dev.off()
+plot_density_sc_STMN2 <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "STMN2", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_STMN2.jpg", width = 450, height = 450)
+print(plot_density_sc_STMN2)
+dev.off()
+plot_density_sc_GPM6A <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "GPM6A", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_GPM6A.jpg", width = 450, height = 450)
+print(plot_density_sc_GPM6A)
+dev.off()
+plot_density_sc_MLANA <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "MLANA", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_MLANA.jpg", width = 450, height = 450)
+print(plot_density_sc_MLANA)
+dev.off()
+plot_density_sc_STRC <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "STRC", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_STRC.jpg", width = 450, height = 450)
+print(plot_density_sc_STRC)
+dev.off()
+plot_density_sc_PDGFRB <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "PDGFRB", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_PDGFRB.jpg", width = 450, height = 450)
+print(plot_density_sc_PDGFRB)
+dev.off()
+plot_density_sc_OTOR <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, "OTOR", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sc_OTOR.jpg", width = 300, height = 300)
+print(plot_density_sc_OTOR)
+dev.off()
+```
+
+
+### snRNAseq
+```{r Load IEO_sn_SCT_ccmiri_PCA30_UMAP}
+IEO_sn_SCT_ccmiri_PCA30_UMAP_preidents <- readRDS("~/data/IEO_sn_SCT_ccmiri_PCA30_UMAP.rds")
+```
+
+```{r Cluster annotation sn}
+new.cluster.ids_sn <- c("Chondrocytes 1", "Chondrocytes 2", "Mesenchymal cells 1", "Mesenchymal cells 2", "Keratinocytes 1", "Fibroblasts", "Neuroepithelial cells 1", "Mesenchymal cells 3", "Chondrocytes 3", "Skeletal myocytes 1", "Otic epithelial cells", "Chondrocytes 4", "Neuroepithelial cells 2", "Keratinocytes 2", "Neuroepitehlial cells 3", "Chondrocytes 5", "Pericytes", "Schwann cells", "Neuroepithelial cells 4", "Mesenchymal cells 4", "Neuroepithelial cells 5", "Skeletal myocytes 2", "Skeletal myocytes 3", "Hair cells", "Endothelial cells", "Melanocytes", "Mesenchymal cells 5", "Neuroepithelial cells 6", "Adipocytes")
+names(new.cluster.ids_sn) <- levels(IEO_sn_SCT_ccmiri_PCA30_UMAP_preidents)
+IEO_sn_SCT_ccmiri_PCA30_UMAP <- RenameIdents(IEO_sn_SCT_ccmiri_PCA30_UMAP_preidents, new.cluster.ids_sn)
+```
+
+```{r Save IEO_sn_SCT_ccmiri_PCA30_UMAP with new annotations}
+saveRDS(IEO_sn_SCT_ccmiri_PCA30_UMAP, "~/output/IEO_sn_SCT_ccmiri_PCA30_UMAP.rds")
+```
+
+```{r Generating HeatMap sn}
+IEO_sn_SCT_ccmiri_PCA30_UMAP.markers <- read.csv("~/data/IEO_sn_SCT_ccmiri_PCA30_UMAP.markers.csv")
+sn_top5.markers <- IEO_sn_SCT_ccmiri_PCA30_UMAP.markers %>% group_by(cluster) %>% top_n(5, avg_log2FC)
+
+DefaultAssay(IEO_sn_SCT_ccmiri_PCA30_UMAP) <- "RNA"
+IEO_sn_SCT_ccmiri_PCA30_UMAP <-ScaleData(IEO_sn_SCT_ccmiri_PCA30_UMAP)
+top5_heatmap_sn_RNA <- DoHeatmap(object = IEO_sn_SCT_ccmiri_PCA30_UMAP, features = sn_top5.markers$gene, label = TRUE, size = .5)+ scale_fill_viridis(option="mako")
+
+pdf("sn_top5_heatmap_RNA.pdf", width = 32, height = 16)
+print(top5_heatmap_sn_RNA)
+dev.off()
+jpeg("sn_top5_heatmap_RNA.jpg", width = 7200, height = 4800)
+print(top5_heatmap_sn_RNA)
+dev.off()
+```
+
+#### UMAP snRNAseq
+Generate simplified UMAP
+```{r UMAP sn}
+new.cluster.ids_sn <- c("Chondrocytes", "Chondrocytes", "Mesenchymal cells", "Mesenchymal cells", "Keratinocytes", "Fibroblasts", "Neuroepithelial cells", "Mesenchymal cells", "Chondrocytes", "Skeletal myocytes", "Otic epithelial cells", "Chondrocytes", "Neuroepithelial cells", "Keratinocytes", "Neuroepithelial cells", "Chondrocytes", "Pericytes", "Schwann cells", "Neuroepithelial cells", "Mesenchymal cells", "Neuroepithelial cells", "Skeletal myocytes", "Skeletal myocytes", "Hair cells", "Endothelial cells", "Melanocytes", "Mesenchymal cells", "Neuroepithelial cells", "Adipocytes")
+names(new.cluster.ids_sn) <- levels(IEO_sn_SCT_ccmiri_PCA30_UMAP)
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply <- RenameIdents(IEO_sn_SCT_ccmiri_PCA30_UMAP, new.cluster.ids_sn)
+```
+
+```{r Setup colors for plotting}
+colors_sn_simple<-c("#0450fb", "#42e8f3", "#4d648d", "#11aac4", "#9eccaf", "#ffdb00", "#AEC7E8", "#2CA02C", "#f9ae34", "#e81f3f", "#ffd3b6", "#983b59", "#723584")
+```
+
+```{r Generate UMAP plots}
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, raster = FALSE) + ggtitle("UMAP plot") & NoAxes() &NoLegend()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot.pdf", width = 6, height = 6)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot)
+dev.off()
+
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, raster = FALSE, pt.size = 5) + ggtitle("UMAP plot") & NoAxes() &NoLegend()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot.jpg", width = 2400, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg)
+dev.off()
+
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_legend <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, raster = FALSE) + ggtitle("UMAP plot") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_legend.pdf", width = 8, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_legend)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_legend
+
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbyexperiment <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, split.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbyexperiment.pdf", width = 40, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbyexperiment)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbycellline <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, split.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbycellline.pdf", width = 19, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbycellline)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytimepoint <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, split.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytimepoint.pdf", width = 19, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytimepoint)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytechnique <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, split.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytechnique.pdf", width = 13, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_splitbytechnique)
+dev.off()
+
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbyexperiment <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, group.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbyexperiment.pdf", width = 7, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbyexperiment)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbycellline <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), group.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbycellline.pdf", width = 7, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbycellline)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytimepoint <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4", "#ff8b94"), group.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytimepoint.pdf", width = 7, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytimepoint)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytechnique <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4"), group.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+pdf("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytechnique.pdf", width = 7, height = 4)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_groupbytechnique)
+dev.off()
+```
+
+```{r Generate UMAP plots .jpg sn}
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbyexperiment <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, pt.size = 5, split.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbyexperiment.jpg", width = 24000, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbyexperiment)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbycellline <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, pt.size = 5, split.by = "cellline", raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbycellline.jpg", width = 11400, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbycellline)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytimepoint <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, pt.size = 5, split.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytimepoint.jpg", width = 11400, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytimepoint)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytechnique <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, pt.size = 5, split.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytechnique.jpg", width = 7800, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_splitbytechnique)
+dev.off()
+
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbyexperiment <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=colors_sn_simple, pt.size = 5, group.by = "experiment", raster = FALSE) + ggtitle("UMAP plot split by batch") & NoAxes()
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbyexperiment.jpg", width = 4200, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbyexperiment)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbycellline <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), pt.size = 5, group.by = "cellline", order = c("04i10", "H1 and 04i10", "WTC"), raster = FALSE) + ggtitle("UMAP plot split by cell line") & NoAxes()
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbycellline.jpg", width = 4200, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbycellline)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytimepoint <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4", "#ff8b94", "#C49C94", "#990066"), pt.size = 5, group.by = "timepoint", raster = FALSE) + ggtitle("UMAP plot split by differentiation day") & NoAxes()
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytimepoint.jpg", width = 4200, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytimepoint)
+dev.off()
+IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytechnique <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, cols=c("#4d648d", "#11aac4"), pt.size = 5, group.by = "technique", raster = FALSE) + ggtitle("UMAP plot split by technique") & NoAxes()
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytechnique.jpg", width = 4200, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply_dimplot_jpg_groupbytechnique)
+dev.off()
+```
+
+#### Cluster analysis snRNAseq
+```{r Generate tables containing information on technique, cell line, timepoint and batch, both absolute (talbe.cluster.xxx) and relative (freq.cluster.xxx) sn}
+
+IEO_data_analyses_sn_H1 <- subset(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, subset = cellline == "H1")
+IEO_data_analyses_sn_04i <- subset(IEO_sn_SCT_ccmiri_PCA30_UMAP_simply, subset = cellline == "04i")
+
+table.cluster.timepoint_IEO_data_analyses_sn_H1 <- table(IEO_data_analyses_sn_H1@active.ident,IEO_data_analyses_sn_H1@meta.data$timepoint)
+freq.cluster.timepoint_IEO_data_analyses_sn_H1 <- table.cluster.timepoint_IEO_data_analyses_sn_H1 / rowSums(table.cluster.timepoint_IEO_data_analyses_sn_H1) 
+freq.timepoint.cluster_IEO_data_analyses_sn_H1 <- sweep(table.cluster.timepoint_IEO_data_analyses_sn_H1, 2, colSums(table.cluster.timepoint_IEO_data_analyses_sn_H1), '/')
+freq.timepoint.cluster_IEO_data_analyses_sn_H1
+
+table.cluster.timepoint_IEO_data_analyses_sn_04i <- table(IEO_data_analyses_sn_04i@active.ident,IEO_data_analyses_sn_04i@meta.data$timepoint)
+freq.cluster.timepoint_IEO_data_analyses_sn_04i <- table.cluster.timepoint_IEO_data_analyses_sn_04i / rowSums(table.cluster.timepoint_IEO_data_analyses_sn_04i) 
+freq.timepoint.cluster_IEO_data_analyses_sn_04i <- sweep(table.cluster.timepoint_IEO_data_analyses_sn_04i, 2, colSums(table.cluster.timepoint_IEO_data_analyses_sn_04i), '/')
+freq.timepoint.cluster_IEO_data_analyses_sn_04i
+
+IEO_data_analyses_sn <- IEO_sn_SCT_ccmiri_PCA30_UMAP_simply
+
+table.cluster.experiment_sn <- table(IEO_data_analyses_sn@active.ident,IEO_data_analyses_sn@meta.data$experiment)
+freq.cluster.experiment_sn <-table.cluster.experiment_sn / rowSums(table.cluster.experiment_sn) 
+freq.experiment.cluster_sn <- sweep(table.cluster.experiment_sn, 2, colSums(table.cluster.experiment_sn), '/')
+freq.experiment.cluster_sn
+
+table.cluster.technique_sn <- table(IEO_data_analyses_sn@active.ident,IEO_data_analyses_sn@meta.data$technique)
+freq.cluster.technique_sn <- table.cluster.technique_sn / rowSums(table.cluster.technique_sn)
+freq.technique.cluster_sn <- sweep(table.cluster.technique_sn, 2, colSums(table.cluster.technique_sn), '/')
+
+table.cluster.timepoint_sn <- table(IEO_data_analyses_sn@active.ident,IEO_data_analyses_sn@meta.data$timepoint)
+freq.cluster.timepoint_sn <- table.cluster.timepoint_sn / rowSums(table.cluster.timepoint_sn) 
+freq.timepoint.cluster_sn <- sweep(table.cluster.timepoint_sn, 2, colSums(table.cluster.timepoint_sn), '/')
+
+table.cluster.cellline_sn <- table(IEO_data_analyses_sn@active.ident,IEO_data_analyses_sn@meta.data$cellline)
+freq.cluster.cellline_sn <- table.cluster.cellline_sn / rowSums(table.cluster.cellline_sn) 
+freq.cellline.cluster_sn <- sweep(table.cluster.cellline_sn, 2, colSums(table.cluster.cellline_sn), '/')
+
+freq.experiment_sn <- prop.table(colSums(table.cluster.experiment_sn))
+freq.technique_sn <- prop.table(colSums(table.cluster.technique_sn))
+freq.timepoint_sn <- prop.table(colSums(table.cluster.timepoint_sn))
+freq.cellline_sn <- prop.table(colSums(table.cluster.cellline_sn))
+freq.cluster_sn <- prop.table(rowSums(table.cluster.experiment_sn)) 
+freq.experiment_sn
+freq.technique_sn
+freq.timepoint_sn
+freq.cellline_sn
+freq.cluster_sn
+```
+
+```{r Bar plot of frequency of cell clusters found within each experiment sn}
+df_sn_experiment <- as.data.frame.matrix(freq.experiment.cluster_sn) 
+df_sn_experiment["cluster"] <- rownames(df_sn_experiment)
+
+df_sn_experiment <- df_sn_experiment[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Hair cells","Endothelial","Adipocytes"),]
+
+df_sn_experiment <- gather(df_sn_experiment, "experiment", "frequency", c(1:(ncol(df_sn_experiment)-1)))
+df_sn_experiment$cluster <- factor(df_sn_experiment$cluster, levels = unique(df_sn_experiment$cluster)) 
+df_sn_experiment_plot_legend <- ggplot(data = df_sn_experiment) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))  
+pdf("df_sn_experiment_plot_legend.pdf", width = 7, height = 7)
+print(df_sn_experiment_plot_legend)
+dev.off()
+df_sn_experiment_plot_legend
+
+df_sn_experiment_plot <- ggplot(data = df_sn_experiment) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))    & NoAxes() & NoLegend()
+pdf("df_sn_experiment_plot.pdf", width = 2, height = 7)
+print(df_sn_experiment_plot)
+dev.off()
+jpeg("df_sn_experiment_plot.jpg", width = 1200, height = 1800)
+print(df_sn_experiment_plot)
+dev.off()
+df_sn_experiment_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each technique sn}
+df_sn_technique <- as.data.frame.matrix(freq.technique.cluster_sn) 
+df_sn_technique["cluster"] <- rownames(df_sn_technique)
+
+df_sn_technique <- df_sn_technique[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Hair cells","Endothelial","Adipocytes"),]
+
+df_sn_technique <- gather(df_sn_technique, "technique", "frequency", c(1:(ncol(df_sn_technique)-1)))
+df_sn_technique$cluster <- factor(df_sn_technique$cluster, levels = unique(df_sn_technique$cluster)) 
+df_sn_technique_plot_legend <- ggplot(data = df_sn_technique) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))     
+pdf("df_sn_technique_plot_legend.pdf", width = 7, height = 7)
+print(df_sn_technique_plot_legend)
+dev.off()
+df_sn_technique_plot_legend
+
+df_sn_technique_plot <- ggplot(data = df_sn_technique) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))    & NoAxes() & NoLegend()
+pdf("df_sn_technique_plot.pdf", width = 2, height = 7)
+print(df_sn_technique_plot)
+dev.off()
+jpeg("df_sn_technique_plot.jpg", width = 1200, height = 1800)
+print(df_sn_technique_plot)
+dev.off()
+df_sn_technique_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint sn}
+df_sn_timepoint <- as.data.frame.matrix(freq.timepoint.cluster_sn) 
+df_sn_timepoint["cluster"] <- rownames(df_sn_timepoint)
+
+df_sn_timepoint <- df_sn_timepoint[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Hair cells","Endothelial","Adipocytes"),]
+
+df_sn_timepoint <- gather(df_sn_timepoint, "timepoint", "frequency", c(1:(ncol(df_sn_timepoint)-1)))
+df_sn_timepoint$cluster <- factor(df_sn_timepoint$cluster, levels = unique(df_sn_timepoint$cluster)) 
+df_sn_timepoint_plot_legend <- ggplot(data = df_sn_timepoint) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))     
+pdf("df_sn_timepoint_plot_legend.pdf", width = 7, height = 7)
+print(df_sn_timepoint_plot_legend)
+dev.off()
+df_sn_timepoint_plot_legend
+
+df_sn_timepoint_plot <- ggplot(data = df_sn_timepoint) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))    & NoAxes() & NoLegend()
+pdf("df_sn_timepoint_plot.pdf", width = 2, height = 7)
+print(df_sn_timepoint_plot)
+dev.off() 
+jpeg("df_sn_timepoint_plot.jpg", width = 1200, height = 1800)
+print(df_sn_timepoint_plot)
+dev.off() 
+df_sn_timepoint_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint freq.timepoint.cluster_IEO_data_analyses_sn_H1}
+df_sn_timepoint_H1 <- as.data.frame.matrix(freq.timepoint.cluster_IEO_data_analyses_sn_H1) 
+df_sn_timepoint_H1["cluster"] <- rownames(df_sn_timepoint_H1)
+
+df_sn_timepoint_H1 <- df_sn_timepoint_H1[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Hair cells","Endothelial","Adipocytes"),]
+
+df_sn_timepoint_H1 <- gather(df_sn_timepoint_H1, "timepoint", "frequency", c(1:(ncol(df_sn_timepoint_H1)-1)))
+df_sn_timepoint_H1$cluster <- factor(df_sn_timepoint_H1$cluster, levels = unique(df_sn_timepoint_H1$cluster)) 
+df_sn_timepoint_H1_plot_legend <- ggplot(data = df_sn_timepoint_H1) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))     
+pdf("df_sn_timepoint_H1_plot_legend.pdf", width = 7, height = 7)
+print(df_sn_timepoint_H1_plot_legend)
+dev.off()
+df_sn_timepoint_H1_plot_legend
+
+df_sn_timepoint_H1_plot <- ggplot(data = df_sn_timepoint_H1) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))    & NoAxes() & NoLegend()
+pdf("df_sn_timepoint_H1_plot.pdf", width = 2, height = 7)
+print(df_sn_timepoint_H1_plot)
+dev.off() 
+jpeg("df_sn_timepoint_H1_plot.jpg", width = 1200, height = 1800)
+print(df_sn_timepoint_H1_plot)
+dev.off() 
+df_sn_timepoint_H1_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint freq.timepoint.cluster_IEO_data_analyses_sn_04i}
+df_sn_timepoint_04i <- as.data.frame.matrix(freq.timepoint.cluster_IEO_data_analyses_sn_04i) 
+df_sn_timepoint_04i["cluster"] <- rownames(df_sn_timepoint_04i)
+
+df_sn_timepoint_04i <- df_sn_timepoint_04i[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Hair cells","Endothelial","Adipocytes"),]
+
+df_sn_timepoint_04i <- gather(df_sn_timepoint_04i, "timepoint", "frequency", c(1:(ncol(df_sn_timepoint_04i)-1)))
+df_sn_timepoint_04i$cluster <- factor(df_sn_timepoint_04i$cluster, levels = unique(df_sn_timepoint_04i$cluster)) 
+df_sn_timepoint_04i_plot_legend <- ggplot(data = df_sn_timepoint_04i) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))     
+pdf("df_sn_timepoint_04i_plot_legend.pdf", width = 7, height = 7)
+print(df_sn_timepoint_04i_plot_legend)
+dev.off()
+df_sn_timepoint_04i_plot_legend
+
+df_sn_timepoint_04i_plot <- ggplot(data = df_sn_timepoint_04i) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))    & NoAxes() & NoLegend()
+pdf("df_sn_timepoint_04i_plot.pdf", width = 2, height = 7)
+print(df_sn_timepoint_04i_plot)
+dev.off() 
+jpeg("df_sn_timepoint_04i_plot.jpg", width = 1200, height = 1800)
+print(df_sn_timepoint_04i_plot)
+dev.off() 
+df_sn_timepoint_04i_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each cellline sn}
+df_sn_cellline <- as.data.frame.matrix(freq.cellline.cluster_sn) 
+df_sn_cellline["cluster"] <- rownames(df_sn_cellline)
+
+df_sn_cellline <- df_sn_cellline[c("Chondrocytes","Fibroblasts","Pericytes","Mesenchymal cells","Skeletal myocytes","Neuroepithelial cells","Schwann cells","Keratinocytes","Melanocytes","Otic epithelial cells","Hair cells","Endothelial","Adipocytes"),]
+
+df_sn_cellline <- gather(df_sn_cellline, "cellline", "frequency", c(1:(ncol(df_sn_cellline)-1)))
+df_sn_cellline$cluster <- factor(df_sn_cellline$cluster, levels = unique(df_sn_cellline$cluster)) 
+df_sn_cellline_plot_legend <- ggplot(data = df_sn_cellline) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))     
+pdf("df_sn_cellline_plot_legend.pdf", width = 7, height = 7)
+print(df_sn_cellline_plot_legend)
+dev.off()
+df_sn_cellline_plot_legend
+
+df_sn_cellline_plot <- ggplot(data = df_sn_cellline) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#0450fb","#11aac4","#2CA02C","#42e8f3","#ffdb00","#9eccaf","#f9ae34","#4d648d","#983b59","#AEC7E8", "#e81f3f","#ffd3b6","#723584"))    & NoAxes() & NoLegend()
+pdf("df_sn_cellline_plot.pdf", width = 2, height = 7)
+print(df_sn_cellline_plot)
+dev.off() 
+jpeg("df_sn_cellline_plot.jpg", width = 1200, height = 1800)
+print(df_sn_cellline_plot)
+dev.off() 
+df_sn_cellline_plot
+```
+
+#### Large group analysis snRNAseq
+```{r Load ccmiri_PCA30_UMAP_7 for largegroup sn}
+IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup <- readRDS("~/data/IEO_sn_SCT_ccmiri_PCA30_UMAP.rds")
+```
+
+```{r new clusters for largegroup}
+new.cluster.ids_sn_largegroup <- c("Mesenchymal", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Epithelial", "Mesenchymal", "Neuroectodermal", "Mesenchymal", "Mesenchymal", "Mesenchymal", "Otic", "Mesenchymal", "Neuroectodermal", "Epithelial", "Neuroectodermal", "Mesenchymal", "Mesenchymal", "Neuroectodermal", "Neuroectodermal", "Mesenchymal", "Neuroectodermal", "Mesenchymal", "Mesenchymal", "Otic", "Endothelial", "Neuroectodermal", "Mesenchymal", "Neuroectodermal", "Mesenchymal")
+names(new.cluster.ids_sn_largegroup) <- levels(IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup)
+IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup <- RenameIdents(IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup, new.cluster.ids_sn_largegroup, colours(colors))
+```
+
+```{r Save ccmiri_PCA30_UMAP_7 with new annotations for largegroup sn}
+saveRDS(IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup, "~/output/IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup.rds")
+```
+
+```{r Generate tables containing information on technique, cell line, timepoint and batch, both absolute (talbe.cluster.xxx) and relative (freq.cluster.xxx) sn}
+IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup <- readRDS("~/output/IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup.rds")
+
+IEO_data_analyses_sn_largegroup <- IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup
+
+IEO_data_analyses_sn_largegroup_H1 <- subset(IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup, subset = cellline == "H1")
+IEO_data_analyses_sn_largegroup_04i <- subset(IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup, subset = cellline == "04i")
+
+table.cluster.experiment_sn_largegroup <- table(IEO_data_analyses_sn_largegroup@active.ident,IEO_data_analyses_sn_largegroup@meta.data$experiment)
+freq.cluster.experiment_sn_largegroup <-table.cluster.experiment_sn_largegroup / rowSums(table.cluster.experiment_sn_largegroup) 
+freq.experiment.cluster_sn_largegroup <- sweep(table.cluster.experiment_sn_largegroup, 2, colSums(table.cluster.experiment_sn_largegroup), '/')
+
+table.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1 <- table(IEO_data_analyses_sn_largegroup_H1@active.ident,IEO_data_analyses_sn_largegroup_H1@meta.data$timepoint)
+freq.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1 <- table.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1 / rowSums(table.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1) 
+freq.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1 <- sweep(table.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1, 2, colSums(table.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1), '/')
+freq.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1
+
+table.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i <- table(IEO_data_analyses_sn_largegroup_04i@active.ident,IEO_data_analyses_sn_largegroup_04i@meta.data$timepoint)
+freq.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i <- table.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i / rowSums(table.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i) 
+freq.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i <- sweep(table.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i, 2, colSums(table.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i), '/')
+freq.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i
+
+table.cluster.technique_sn_largegroup <- table(IEO_data_analyses_sn_largegroup@active.ident,IEO_data_analyses_sn_largegroup@meta.data$technique)
+freq.cluster.technique_sn_largegroup <- table.cluster.technique_sn_largegroup / rowSums(table.cluster.technique_sn_largegroup)
+freq.technique.cluster_sn_largegroup <- sweep(table.cluster.technique_sn_largegroup, 2, colSums(table.cluster.technique_sn_largegroup), '/')
+
+table.cluster.timepoint_sn_largegroup <- table(IEO_data_analyses_sn_largegroup@active.ident,IEO_data_analyses_sn_largegroup@meta.data$timepoint)
+freq.cluster.timepoint_sn_largegroup <- table.cluster.timepoint_sn_largegroup / rowSums(table.cluster.timepoint_sn_largegroup) 
+freq.timepoint.cluster_sn_largegroup <- sweep(table.cluster.timepoint_sn_largegroup, 2, colSums(table.cluster.timepoint_sn_largegroup), '/')
+
+table.cluster.cellline_sn_largegroup <- table(IEO_data_analyses_sn_largegroup@active.ident,IEO_data_analyses_sn_largegroup@meta.data$cellline)
+freq.cluster.cellline_sn_largegroup <- table.cluster.cellline_sn_largegroup / rowSums(table.cluster.cellline_sn_largegroup) 
+freq.cellline.cluster_sn_largegroup <- sweep(table.cluster.cellline_sn_largegroup, 2, colSums(table.cluster.cellline_sn_largegroup), '/')
+
+freq.experiment_sn_largegroup <- prop.table(colSums(table.cluster.experiment_sn_largegroup))
+freq.technique_sn_largegroup  <- prop.table(colSums(table.cluster.technique_sn_largegroup))
+freq.timepoint_sn_largegroup  <- prop.table(colSums(table.cluster.timepoint_sn_largegroup))
+freq.cellline_sn_largegroup  <- prop.table(colSums(table.cluster.cellline_sn_largegroup))
+freq.cluster_sn_largegroup  <- prop.table(rowSums(table.cluster.experiment_sn_largegroup)) 
+freq.experiment_sn_largegroup 
+freq.technique_sn_largegroup 
+freq.timepoint_sn_largegroup 
+freq.cellline_sn_largegroup 
+freq.cluster_sn_largegroup 
+```
+
+```{r Load ccmiri_PCA30_UMAP_7 with new annotations _largegroup sn}
+IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup <- readRDS("~/output/IEO_sn_SCT_ccmiri_PCA30_UMAP_largegroup.rds")
+```
+
+```{r Bar plot of frequency of cell clusters found within each experiment _sn_largegroup}
+df_experiment_sn_largegroup <- as.data.frame.matrix(freq.experiment.cluster_sn_largegroup) 
+df_experiment_sn_largegroup["cluster"] <- rownames(df_experiment_sn_largegroup)
+
+df_experiment_sn_largegroup <- df_experiment_sn_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic"),]
+
+df_experiment_sn_largegroup <- gather(df_experiment_sn_largegroup, "experiment", "frequency", c(1:(ncol(df_experiment_sn_largegroup)-1)))
+df_experiment_sn_largegroup$cluster <- factor(df_experiment_sn_largegroup$cluster, levels = unique(df_experiment_sn_largegroup$cluster)) 
+df_experiment_sn_largegroup_plot_legend <- ggplot(data = df_experiment_sn_largegroup) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))
+pdf("df_experiment_sn_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_experiment_sn_largegroup_plot_legend)
+dev.off()
+df_experiment_sn_largegroup_plot_legend
+
+df_experiment_sn_largegroup_plot <- ggplot(data = df_experiment_sn_largegroup) + geom_bar(mapping = aes(x = experiment, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values = c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))   & NoAxes() & NoLegend()
+pdf("df_experiment_sn_largegroup_plot.pdf", width = 2, height = 7)
+print(df_experiment_sn_largegroup_plot)
+dev.off()
+jpeg("df_experiment_sn_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_experiment_sn_largegroup_plot)
+dev.off()
+df_experiment_sn_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each technique _sn_largegroup}
+df_technique_sn_largegroup <- as.data.frame.matrix(freq.technique.cluster_sn_largegroup) 
+df_technique_sn_largegroup["cluster"] <- rownames(df_technique_sn_largegroup)
+
+df_technique_sn_largegroup <- df_technique_sn_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic"),]
+
+df_technique_sn_largegroup <- gather(df_technique_sn_largegroup, "technique", "frequency", c(1:(ncol(df_technique_sn_largegroup)-1)))
+df_technique_sn_largegroup$cluster <- factor(df_technique_sn_largegroup$cluster, levels = unique(df_technique_sn_largegroup$cluster)) 
+df_technique_sn_largegroup_plot_legend <- ggplot(data = df_technique_sn_largegroup) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))   
+pdf("df_technique_sn_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_technique_sn_largegroup_plot_legend)
+dev.off()
+df_technique_sn_largegroup_plot_legend
+
+df_technique_sn_largegroup_plot <- ggplot(data = df_technique_sn_largegroup) + geom_bar(mapping = aes(x = technique, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))  & NoAxes() & NoLegend()
+pdf("df_technique_sn_largegroup_plot.pdf", width = 2, height = 7)
+print(df_technique_sn_largegroup_plot)
+dev.off()
+jpeg("df_technique_sn_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_technique_sn_largegroup_plot)
+dev.off()
+df_technique_sn_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint _sn_largegroup}
+df_timepoint_sn_largegroup <- as.data.frame.matrix(freq.timepoint.cluster_sn_largegroup) 
+df_timepoint_sn_largegroup["cluster"] <- rownames(df_timepoint_sn_largegroup)
+
+df_timepoint_sn_largegroup <- df_timepoint_sn_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic"),]
+
+df_timepoint_sn_largegroup <- gather(df_timepoint_sn_largegroup, "timepoint", "frequency", c(1:(ncol(df_timepoint_sn_largegroup)-1)))
+df_timepoint_sn_largegroup$cluster <- factor(df_timepoint_sn_largegroup$cluster, levels = unique(df_timepoint_sn_largegroup$cluster)) 
+df_timepoint_sn_largegroup_plot_legend <- ggplot(data = df_timepoint_sn_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))    
+pdf("df_timepoint_sn_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_timepoint_sn_largegroup_plot_legend)
+dev.off()
+df_timepoint_sn_largegroup_plot_legend
+
+df_timepoint_sn_largegroup_plot <- ggplot(data = df_timepoint_sn_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))  & NoAxes() & NoLegend()
+pdf("df_timepoint_sn_largegroup_plot.pdf", width = 2, height = 7)
+print(df_timepoint_sn_largegroup_plot)
+dev.off() 
+jpeg("df_timepoint_sn_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_timepoint_sn_largegroup_plot)
+dev.off() 
+df_timepoint_sn_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each cellline _sn_largegroup}
+df_cellline_sn_largegroup <- as.data.frame.matrix(freq.cellline.cluster_sn_largegroup) 
+df_cellline_sn_largegroup["cluster"] <- rownames(df_cellline_sn_largegroup)
+
+df_cellline_sn_largegroup <- df_cellline_sn_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic"),]
+
+df_cellline_sn_largegroup <- gather(df_cellline_sn_largegroup, "cellline", "frequency", c(1:(ncol(df_cellline_sn_largegroup)-1)))
+df_cellline_sn_largegroup$cluster <- factor(df_cellline_sn_largegroup$cluster, levels = unique(df_cellline_sn_largegroup$cluster)) 
+df_cellline_sn_largegroup_plot_legend <- ggplot(data = df_cellline_sn_largegroup) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))  
+pdf("df_cellline_sn_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_cellline_sn_largegroup_plot_legend)
+dev.off()
+df_cellline_sn_largegroup_plot_legend
+
+df_cellline_sn_largegroup_plot <- ggplot(data = df_cellline_sn_largegroup) + geom_bar(mapping = aes(x = cellline, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))   & NoAxes() & NoLegend()
+pdf("df_cellline_sn_largegroup_plot.pdf", width = 2, height = 7)
+print(df_cellline_sn_largegroup_plot)
+dev.off() 
+jpeg("df_cellline_sn_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_cellline_sn_largegroup_plot)
+dev.off() 
+df_cellline_sn_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint_largeroup freq.timepoint.cluster_IEO_data_analyses_sn_H1}
+
+df_timepoint_sn__H1_largegroup <- as.data.frame.matrix(freq.cluster.timepoint_IEO_data_analyses_sn_largegroup_H1) 
+df_timepoint_sn__H1_largegroup["cluster"] <- rownames(df_timepoint_sn__H1_largegroup)
+
+df_timepoint_sn__H1_largegroup <- df_timepoint_sn__H1_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic"),]
+
+df_timepoint_sn__H1_largegroup <- gather(df_timepoint_sn__H1_largegroup, "timepoint", "frequency", c(1:(ncol(df_timepoint_sn__H1_largegroup)-1)))
+df_timepoint_sn__H1_largegroup$cluster <- factor(df_timepoint_sn__H1_largegroup$cluster, levels = unique(df_timepoint_sn__H1_largegroup$cluster)) 
+df_timepoint_sn__H1_largegroup_plot_legend <- ggplot(data = df_timepoint_sn__H1_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))    
+pdf("df_timepoint_sn__H1_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_timepoint_sn__H1_largegroup_plot_legend)
+dev.off()
+df_timepoint_sn__H1_largegroup_plot_legend
+
+df_timepoint_sn__H1_largegroup_plot <- ggplot(data = df_timepoint_sn__H1_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))  & NoAxes() & NoLegend()
+pdf("df_timepoint_sn__H1_largegroup_plot.pdf", width = 2, height = 7)
+print(df_timepoint_sn__H1_largegroup_plot)
+dev.off() 
+jpeg("df_timepoint_sn__H1_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_timepoint_sn__H1_largegroup_plot)
+dev.off() 
+df_timepoint_sn__H1_largegroup_plot
+```
+
+```{r Bar plot of frequency of cell clusters found within each timepoint_largeroup freq.timepoint.cluster_IEO_data_analyses_sn_04i}
+
+df_timepoint_sn__04i_largegroup <- as.data.frame.matrix(freq.cluster.timepoint_IEO_data_analyses_sn_largegroup_04i) 
+df_timepoint_sn__04i_largegroup["cluster"] <- rownames(df_timepoint_sn__04i_largegroup)
+
+df_timepoint_sn__04i_largegroup <- df_timepoint_sn__04i_largegroup[c("Mesenchymal", "Epithelial", "Neuroectodermal", "Endothelial", "Otic"),]
+
+df_timepoint_sn__04i_largegroup <- gather(df_timepoint_sn__04i_largegroup, "timepoint", "frequency", c(1:(ncol(df_timepoint_sn__04i_largegroup)-1)))
+df_timepoint_sn__04i_largegroup$cluster <- factor(df_timepoint_sn__04i_largegroup$cluster, levels = unique(df_timepoint_sn__04i_largegroup$cluster)) 
+df_timepoint_sn__04i_largegroup_plot_legend <- ggplot(data = df_timepoint_sn__04i_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))    
+pdf("df_timepoint_sn__04i_largegroup_plot_legend.pdf", width = 7, height = 7)
+print(df_timepoint_sn__04i_largegroup_plot_legend)
+dev.off()
+df_timepoint_sn__04i_largegroup_plot_legend
+
+df_timepoint_sn__04i_largegroup_plot <- ggplot(data = df_timepoint_sn__04i_largegroup) + geom_bar(mapping = aes(x = timepoint, y = frequency, fill = cluster), stat = "identity") +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) + theme(axis.text.x  = element_text(angle=90, hjust=1)) + scale_fill_manual(values =  c("#141414", "#3d3d3d", "#666666", "#8f8f8f", "#e81f3f"))  & NoAxes() & NoLegend()
+pdf("df_timepoint_sn__04i_largegroup_plot.pdf", width = 2, height = 7)
+print(df_timepoint_sn__04i_largegroup_plot)
+dev.off() 
+jpeg("df_timepoint_sn__04i_largegroup_plot.jpg", width = 1200, height = 1800)
+print(df_timepoint_sn__04i_largegroup_plot)
+dev.off() 
+df_timepoint_sn__04i_largegroup_plot
+```
+
+#### Gene marker analyses snRNAseq
+```{r}
+plot_density_sn_CDH1 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "CDH1", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_CDH1.jpg", width = 450, height = 450)
+print(plot_density_sn_CDH1)
+dev.off()
+plot_density_sn_OTOR <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "OTOR", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_OTOR.jpg", width = 450, height = 450)
+print(plot_density_sn_OTOR)
+dev.off()
+plot_density_sn_EPCAM <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "EPCAM", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_EPCAM.jpg", width = 450, height = 450)
+print(plot_density_sn_EPCAM)
+dev.off()
+plot_density_sn_PRRX1 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "PRRX1", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_PRRX1.jpg", width = 450, height = 450)
+print(plot_density_sn_PRRX1)
+dev.off()
+plot_density_sn_OC90 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "OC90", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_OC90.jpg", width = 450, height = 450)
+print(plot_density_sn_OC90)
+dev.off()
+plot_density_sn_ACAN <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "ACAN",  pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_ACAN.jpg", width = 450, height = 450)
+print(plot_density_sn_ACAN)
+dev.off()
+plot_density_sn_SOX9 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "SOX9", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_SOX9.jpg", width = 450, height = 450)
+print(plot_density_sn_SOX9)
+dev.off()
+plot_density_sn_TWIST2 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "TWIST2", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_TWIST2.jpg", width = 450, height = 450)
+print(plot_density_sn_TWIST2)
+dev.off()
+plot_density_sn_DPT <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "DPT", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_DPT.jpg", width = 450, height = 450)
+print(plot_density_sn_DPT)
+dev.off()
+plot_density_sn_KRT5 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "KRT5", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_KRT5.jpg", width = 450, height = 450)
+print(plot_density_sn_KRT5)
+dev.off()
+plot_density_sn_MPZ <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "MPZ", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_MPZ.jpg", width = 450, height = 450)
+print(plot_density_sn_MPZ)
+dev.off()
+plot_density_sn_PECAM1 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "PECAM1", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_PECAM1.jpg", width = 450, height = 450)
+print(plot_density_sn_PECAM1)
+dev.off()
+plot_density_sn_TTN <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "TTN", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_TTN.jpg", width = 450, height = 450)
+print(plot_density_sn_TTN)
+dev.off()
+plot_density_sn_SGCA <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "SGCA", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_SGCA.jpg", width = 450, height = 450)
+print(plot_density_sn_SGCA)
+dev.off()
+plot_density_sn_ACTC1 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "ACTC1", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_ACTC1.jpg", width = 450, height = 450)
+print(plot_density_sn_ACTC1)
+dev.off()
+plot_density_sn_STMN2 <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "STMN2", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_STMN2.jpg", width = 450, height = 450)
+print(plot_density_sn_STMN2)
+dev.off()
+plot_density_sn_GPM6A <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "GPM6A", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_GPM6A.jpg", width = 450, height = 450)
+print(plot_density_sn_GPM6A)
+dev.off()
+plot_density_sn_MLANA <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "MLANA", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_MLANA.jpg", width = 450, height = 450)
+print(plot_density_sn_MLANA)
+dev.off()
+plot_density_sn_STRC <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "STRC", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_STRC.jpg", width = 450, height = 450)
+print(plot_density_sn_STRC)
+dev.off()
+plot_density_sn_PDGFRB <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, "PDGFRB", pal = "inferno")  & NoAxes() & NoLegend()
+jpeg("plot_density_sn_PDGFRB.jpg", width = 450, height = 450)
+print(plot_density_sn_PDGFRB)
+dev.off()
+```

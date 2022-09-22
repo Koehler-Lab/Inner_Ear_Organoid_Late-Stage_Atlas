@@ -1,0 +1,1426 @@
+---
+title: "QC and integration of IEO datasets"
+author: "Wouter van der Valk"
+date: "16-8-2022"
+output: html_document
+---
+
+Cell Ranger (version 6.1.0) output in which include-introns option was used for the single nucleus datasets.
+
+This R Markdown file contains the quality control performed separately on the single cell and single nucleus RNA sequencing data. Using SCTransform we analysed the results of regressing out the effects of cell cycle, mitochondrial gene ratio, and ribosomal gene ratio. We also compared the effect of the number of principal components using PCA. Harmony is used for integration of the datasets. Both 2D and 3D UMAP-plots are generated for analyses.
+
+## Combining datasets
+```{r Loading datasets}
+d110_04i_hashwithHTO.data <- Read10X(data.dir = "~/data/d110_04i/filtered_feature_bc_matrix/")
+
+d110_H1_04i.data <- Read10X(data.dir = "~/data/d110_H1_04i/filtered_feature_bc_matrix/")
+
+d75_H1_04i.data <- Read10X(data.dir = "~/data/d75_H1_04i/filtered_feature_bc_matrix/")
+
+d75_SOX2_full.data <- Read10X(data.dir = "~/data/d75_SOX2_full/Admera1/filtered_feature_bc_matrix/")
+
+d75_GCAMP_vibra.data <- Read10X(data.dir = "~/data/d75_GCAMP_vibra/Admera2/filtered_feature_bc_matrix/")
+
+d100_SOX2_full.data <- Read10X(data.dir = "~/data/d100_SOX2_full/Admera3/filtered_feature_bc_matrix/")
+
+d100_SOX2_vibra.data <- Read10X(data.dir = "~/data/d100_SOX2_vibra/Admera4/filtered_feature_bc_matrix/")
+```
+
+```{r For d110_04i_hash.data, only select RNA seq data and not hashtag data}
+d110_04i_hash.data <- d110_04i_hashwithHTO.data[["Gene Expression"]]
+```
+
+```{r Merge of datasets}
+IEO <- CreateSeuratObject(counts = cbind(d110_04i_hash.data, d110_H1_04i.data, d75_H1_04i.data, d75_SOX2_full.data, d75_GCAMP_vibra.data, d100_SOX2_full.data, d100_SOX2_vibra.data))
+```
+
+## Provide dataset with experimental information
+```{r Create experiment}
+IEO@meta.data$experiment <- c(rep("d110_04i_hash", ncol(d110_04i_hash.data)), rep("d110_H1_04i",
+ncol(d110_H1_04i.data)), rep("d75_H1_04i", ncol(d75_H1_04i.data)), rep("d75_SOX2_full", ncol(d75_SOX2_full.data)), rep("d75_GCAMP_vibra", ncol(d75_GCAMP_vibra.data)), rep("d100_SOX2_full", ncol(d100_SOX2_full.data)), rep("d100_SOX2_vibra", ncol(d100_SOX2_vibra.data)))
+```
+
+### Create "cellline" variable using SNP demultiplexing
+```{r Load SNP demultiplexing data received from core}
+table.SNPdemultiplex <- read.table(file = "~/data/demultiplexing/WHV_10X.SCSM_fit.ss.tsv", sep = ',', header = TRUE)
+table.SNPdemultiplex
+nrow(table.SNPdemultiplex)
+```
+
+```{r Subset of table based on experiment}
+table.SNPdemultiplex_d75 <- subset(table.SNPdemultiplex, subset = p == "d75")
+table.SNPdemultiplex_d110 <- subset(table.SNPdemultiplex, subset = p == "d110")
+
+nrow(table.SNPdemultiplex_d75)
+nrow(table.SNPdemultiplex_d110)
+```
+
+```{r Subset IEO for those experiments in which H1 and 04i are combined}
+d75_H1_04i <-  subset(IEO, subset = experiment == "d75_H1_04i")
+d110_H1_04i <-  subset(IEO, subset = experiment == "d110_H1_04i")
+
+ncol(d75_H1_04i)
+ncol(d110_H1_04i)
+```
+
+```{r Add SNPdemultiplex data to d75}
+## Remove d75: before cell identity
+table.SNPdemultiplex_d75 <- table.SNPdemultiplex_d75 %>% mutate_at("c", str_replace, "d75:", "")
+table.SNPdemultiplex_d75
+
+## Create vector of identities
+vector_d75 <- as.vector(table.SNPdemultiplex_d75$calledS)
+
+## This: "d75_H1_04i@meta.data$SNPdemultiplex <- vector_d75" will give an error: replacement has 9984 rows, data has 9985
+
+## Identify source of error
+df_d75_H1_04i <- data.frame(d75_H1_04i@active.ident)
+df_d75_H1_04i
+vector1_d75 <- as.vector(row.names(df_d75_H1_04i))
+vector1_d75 <-gsub("-1.1", "", vector1_d75)
+vector1_d75 <-gsub("-1.2", "", vector1_d75)
+vector1_d75 <-gsub("-1", "", vector1_d75)
+
+vector2_d75 <- as.vector(table.SNPdemultiplex_d75[['c']])
+vector2_d75 <-gsub("-1.1", "", vector2_d75)
+vector2_d75 <-gsub("-1.2", "", vector2_d75)
+vector2_d75 <-gsub("-1", "", vector2_d75)
+
+setdiff(vector1_d75, vector2_d75)
+setdiff(vector2_d75, vector1_d75)
+
+## Missing barcode (CCCTCTCGTCGAAACG), therefore either H1 or 04i making it a doublet. Add this to vector_d75
+
+match("CCCTCTCGTCGAAACG", vector1_d75)
+vector_d75_adjusted <- vector_d75
+vector_d75_adjusted <- append(vector_d75_adjusted, "doublet", after = 3325)
+
+d75_H1_04i@meta.data$cellline <- vector_d75_adjusted
+table(d75_H1_04i$cellline)
+
+## Check whether alignment is successful
+df_d75_H1_04i <- data.frame(d75_H1_04i@active.ident, d75_H1_04i@meta.data$cellline)
+row.names(df_d75_H1_04i) <- gsub("-1.1:", "-1", rownames(df_d75_H1_04i))
+df_d75_H1_04i
+
+SNPdemultiplex_d75_vector_rownames <- as.vector(table.SNPdemultiplex_d75$c)
+SNPdemultiplex_d75_vector_rownames <- append(SNPdemultiplex_d75_vector_rownames, "CCCTCTCGTCGAAACG", after = 3325)
+df_d75_H1_04i$SNPdemultiplex_rownames <- SNPdemultiplex_d75_vector_rownames
+df_d75_H1_04i$calledS <- vector_d75_adjusted
+df_d75_H1_04i
+
+vector1_d75 <- as.vector(row.names(df_d75_H1_04i))
+vector1_d75 <-gsub("-1.1", "", vector1_d75)
+vector1_d75 <-gsub("-1.2", "", vector1_d75)
+vector1_d75 <-gsub("-1", "", vector1_d75)
+
+vector2_d75 <- as.vector(df_d75_H1_04i[['SNPdemultiplex_rownames']])
+vector2_d75 <-gsub("-1.1", "", vector2_d75)
+vector2_d75 <-gsub("-1.2", "", vector2_d75)
+vector2_d75 <-gsub("-1", "", vector2_d75)
+
+identical(vector1_d75, vector2_d75)
+setdiff(vector1_d75, vector2_d75)
+setdiff(vector2_d75, vector1_d75)
+```
+
+```{r Add SNPdemultiplex data to d110}
+## Remove d110: before cell identity
+table.SNPdemultiplex_d110 <- table.SNPdemultiplex_d110 %>% mutate_at("c", str_replace, "d110:", "")
+table.SNPdemultiplex_d110
+
+## Create vector of identities
+vector_d110 <- as.vector(table.SNPdemultiplex_d110$calledS)
+d110_H1_04i@meta.data$cellline <- vector_d110
+table(d110_H1_04i$cellline)
+
+## Check whether alignment is successful
+df_d110_H1_04i <- data.frame(d110_H1_04i@active.ident, d110_H1_04i@meta.data$cellline)
+row.names(df_d110_H1_04i) <- gsub("-1.1:", "-1", rownames(df_d110_H1_04i))
+df_d110_H1_04i
+
+SNPdemultiplex_d110_vector_rownames <- as.vector(table.SNPdemultiplex_d110$c)
+df_d110_H1_04i$SNPdemultiplex_rownames <- SNPdemultiplex_d110_vector_rownames
+df_d110_H1_04i$calledS <- vector_d110
+df_d110_H1_04i
+
+vector1_d110 <- as.vector(row.names(df_d110_H1_04i))
+vector1_d110 <-gsub("-1.1", "", vector1_d110)
+vector1_d110 <-gsub("-1.2", "", vector1_d110)
+vector1_d110 <-gsub("-1", "", vector1_d110)
+
+vector2_d110 <- as.vector(df_d110_H1_04i[['SNPdemultiplex_rownames']])
+vector2_d110 <-gsub("-1.1", "", vector2_d110)
+vector2_d110 <-gsub("-1.2", "", vector2_d110)
+vector2_d110 <-gsub("-1", "", vector2_d110)
+
+identical(vector1_d110, vector2_d110)
+setdiff(vector1_d110, vector2_d110)
+setdiff(vector2_d110, vector1_d110)
+```
+
+```{r Create "cellline" for other experiments}
+d110_04i_hash <- subset(IEO, subset = experiment == "d110_04i_hash")
+d110_04i_hash@meta.data$cellline <- rep("04i", ncol(d110_04i_hash.data))
+d75_SOX2_full <- subset(IEO, subset = experiment == "d75_SOX2_full")
+d75_SOX2_full@meta.data$cellline <- rep("WTC_SOX2", ncol(d75_SOX2_full.data))
+d75_GCAMP_vibra <- subset(IEO, subset = experiment == "d75_GCAMP_vibra")
+d75_GCAMP_vibra@meta.data$cellline <- rep("WTC_GCaMP", ncol(d75_GCAMP_vibra.data))
+d100_SOX2_full <- subset(IEO, subset = experiment == "d100_SOX2_full")
+d100_SOX2_full@meta.data$cellline <- rep("WTC_SOX2", ncol(d100_SOX2_full.data))
+d100_SOX2_vibra <- subset(IEO, subset = experiment == "d100_SOX2_vibra")
+d100_SOX2_vibra@meta.data$cellline <- rep("WTC_SOX2", ncol(d100_SOX2_vibra.data))
+```
+
+```{r Demutliplex epxeriment d110_04i_hash}
+d110_04i_hash <-  subset(IEO, subset = experiment == "d110_04i_hash")
+d110_04i_HTO.data <- d110_04i_hashwithHTO.data[["Antibody Capture"]]
+
+## Subset counts by joint cell barcodes and remove [_] by renaming: [_] will give error in further analysis
+d110_04i_HTO.data <- as.matrix(d110_04i_HTO.data)
+rownames(d110_04i_HTO.data)
+rownames(d110_04i_HTO.data) <- c("Organoid1", "Organoid2")
+rownames(d110_04i_HTO.data)
+d110_04i_hash[["HTO"]] <- CreateAssayObject(counts = d110_04i_HTO.data)
+d110_04i_hash <- NormalizeData(d110_04i_hash, assay = "HTO", normalization.method = "CLR")
+
+## Demultiplex cells based on HTO. To increase singlet capture, changed quantile from 0.99 to 0.75
+d110_04i_hash <- HTODemux(d110_04i_hash, assay = "HTO", positive.quantile = 0.75)
+table(d110_04i_hash$HTO_classification.global)
+
+## Only up to 5488 singlets can be identified of 8795 sequenced nuclei. Therefore we did not include HTO-demultiplexing for this experiment for further analyses.
+```
+
+### Create other variables: "timepoint", "method", "technique"
+
+```{r Merge Seurat objects}
+IEO <- merge(d75_H1_04i, y = c(d110_H1_04i, d110_04i_hash, d75_SOX2_full, d75_GCAMP_vibra, d100_SOX2_full, d100_SOX2_vibra), project = "IEO")
+```
+
+```{r Create timepoint}
+IEO@meta.data$timepoint <- c(rep("d110", ncol(d110_04i_hash.data)), rep("d110", ncol(d110_H1_04i.data)), rep("d75", ncol(d75_H1_04i.data)), rep("d75", ncol(d75_SOX2_full.data)), rep("d75", ncol(d75_GCAMP_vibra.data)), rep("d100", ncol(d100_SOX2_full.data)), rep("d100", ncol(d100_SOX2_vibra.data)))
+```
+
+```{r Create method}
+IEO@meta.data$method <- c(rep("whole", ncol(d110_04i_hash.data)), rep("whole", ncol(d110_H1_04i.data)), rep("whole", ncol(d75_H1_04i.data)), rep("whole", ncol(d75_SOX2_full.data)), rep("vibratome", ncol(d75_GCAMP_vibra.data)), rep("whole", ncol(d100_SOX2_full.data)), rep("vibratome", ncol(d100_SOX2_vibra.data)))
+```
+
+```{r Create technique}
+IEO@meta.data$technique <- c(rep("sn", ncol(d110_04i_hash.data)), rep("sn", ncol(d110_H1_04i.data)), rep("sn", ncol(d75_H1_04i.data)), rep("sc", ncol(d75_SOX2_full.data)), rep("sc", ncol(d75_GCAMP_vibra.data)), rep("sc", ncol(d100_SOX2_full.data)), rep("sc", ncol(d100_SOX2_vibra.data)))
+```
+
+```{r Check number of cells/nuclei per varaible}
+table(IEO$experiment)
+table(IEO$timepoint)
+table(IEO$cellline)
+table(IEO$method)
+table(IEO$technique)
+```
+
+```{r Save IEO}
+saveRDS(IEO, "~/output/IEO.rds")
+```
+
+## Perform QC
+```{r Compute QC parameters}
+# Compute number of genes per UMI
+IEO$log10GenesPerUMI <- log10(IEO$nFeature_RNA) / log10(IEO$nCount_RNA)
+
+# Compute percentage of ribosomal genes
+IEO$RiboRatio <- PercentageFeatureSet(object = IEO, pattern = "^RP[SL]")
+IEO$RiboRatio <- IEO@meta.data$RiboRatio / 100
+
+# Compute percentage of mitochondrial genes
+IEO$MitoRatio <- PercentageFeatureSet(object = IEO, pattern = "^MT-")
+IEO$MitoRatio <- IEO@meta.data$MitoRatio / 100
+```
+
+```{r Rename nCount_RNA to nUMI and nFeature_RNA to nGene}
+IEO_meta <- IEO@meta.data
+IEO_meta$cells <- rownames(IEO_meta)
+IEO_meta <- IEO_meta %>%
+  dplyr::rename(seq_folder = orig.ident,
+                nUMI = nCount_RNA,
+                nGene = nFeature_RNA)
+IEO@meta.data <- IEO_meta
+```
+
+### Split data for seperate QC for sn and sc RNA seq experiments
+```{r Select sn data}
+IEO_sn <- subset(IEO, subset = technique == "sn")
+
+table(IEO_sn$experiment)
+table(IEO_sn$timepoint)
+table(IEO_sn$cellline)
+table(IEO_sn$method)
+table(IEO_sn$technique)
+```
+
+```{r Select sc data}
+IEO_sc <- subset(IEO, subset = technique == "sc")
+
+table(IEO_sc$experiment)
+table(IEO_sc$timepoint)
+table(IEO_sc$cellline)
+table(IEO_sc$method)
+table(IEO_sc$technique)
+```
+
+### QC sn data
+```{r Visualisation of QC sn data}
+metadata_IEO_sn <- IEO_sn@meta.data
+```
+
+```{r Nucleus counts sn data}
+metadata_IEO_sn %>% 
+  ggplot(aes(x=experiment, fill=experiment)) + 
+  geom_bar() +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  ggtitle("Nucleus counts")
+```
+
+```{r UMI counts per nucleus sn data}
+metadata_IEO_sn %>% 
+  ggplot(aes(color=experiment, x=nUMI, fill= experiment)) + 
+  geom_density(alpha = 0.2) + 
+  scale_x_log10() + 
+  theme_classic() +
+  ylab("Cell density") +
+  geom_vline(xintercept = 500) +
+  ggtitle("UMI counts per nuclei")
+```
+
+```{r Genes per nucleus sn data}
+metadata_IEO_sn %>% 
+  ggplot(aes(color=experiment, x=nGene, fill= experiment)) + 
+  geom_density(alpha = 0.2) + 
+  theme_classic() +
+  scale_x_log10() + 
+  geom_vline(xintercept = 300)+
+  ggtitle("Genes per nucleus histo")
+
+metadata_IEO_sn %>% 
+  ggplot(aes(x=experiment, y=log10(nGene), fill=experiment)) + 
+  geom_boxplot() + 
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  ggtitle("Genes per nucleus box")
+```
+
+```{r UMIs versus genes sn data}
+metadata_IEO_sn %>% 
+  ggplot(aes(x=nUMI, y=nGene, color=MitoRatio)) + 
+  geom_point() + 
+  scale_colour_gradient(low = "gray90", high = "black") +
+  stat_smooth(method=lm) +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  theme_classic() +
+  geom_vline(xintercept = 500) +
+  geom_hline(yintercept = 250) +
+  facet_wrap(~experiment) +
+  ggtitle("UMIs versus genes")
+```
+
+```{r Mitochondrial counts sn data}
+metadata_IEO_sn %>% 
+  ggplot(aes(color=experiment, x=MitoRatio, fill=experiment)) + 
+  geom_density(alpha = 0.2) + 
+  scale_x_log10() + 
+  theme_classic() +
+  geom_vline(xintercept = 0.01) +
+  ggtitle("Mitochondrial counts ratio")
+```
+
+```{r Ribosomal counts sn data}
+metadata_IEO_sn %>% 
+  ggplot(aes(color=experiment, x=RiboRatio, fill=experiment)) + 
+  geom_density(alpha = 0.2) + 
+  scale_x_log10() + 
+  theme_classic() +
+  ggtitle("Ribosomal counts ratio")
+```
+
+```{r Complexity sn data}
+metadata_IEO_sn %>%
+  ggplot(aes(x=log10GenesPerUMI, color = experiment, fill=experiment)) +
+  geom_density(alpha = 0.2) +
+  theme_classic() +
+  geom_vline(xintercept = 0.8) +
+  ggtitle("Complexity")
+```
+
+```{r Subsetting IEO_sn based on QC above}
+IEO_sn_filtered <- subset(IEO_sn, subset = (nUMI >= 500) & (nGene >= 250) & (log10GenesPerUMI >0.80) & (MitoRatio < 0.01))
+
+table(IEO_sn_filtered$experiment)
+table(IEO_sn_filtered$timepoint)
+table(IEO_sn_filtered$cellline)
+table(IEO_sn_filtered$method)
+table(IEO_sn_filtered$technique)
+```
+
+### QC sc data
+```{r Visualisation of QC sc data}
+metadata_IEO_sc <- IEO_sc@meta.data
+```
+
+```{r Cell counts sc data}
+metadata_IEO_sc %>% 
+  ggplot(aes(x=experiment, fill=experiment)) + 
+  geom_bar() +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  ggtitle("Cell counts")
+```
+
+```{r UMI counts per cell sc data}
+metadata_IEO_sc %>% 
+  ggplot(aes(color=experiment, x=nUMI, fill= experiment)) + 
+  geom_density(alpha = 0.2) + 
+  scale_x_log10() + 
+  theme_classic() +
+  ylab("Cell density") +
+  geom_vline(xintercept = 500) +
+  ggtitle("UMI counts per cell")
+```
+
+```{r Genes per cell sc data}
+metadata_IEO_sc %>% 
+  ggplot(aes(color=experiment, x=nGene, fill= experiment)) + 
+  geom_density(alpha = 0.2) + 
+  theme_classic() +
+  scale_x_log10() + 
+  geom_vline(xintercept = 300)+
+  ggtitle("Genes per cell histo")
+
+metadata_IEO_sc %>% 
+  ggplot(aes(x=experiment, y=log10(nGene), fill=experiment)) + 
+  geom_boxplot() + 
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  ggtitle("Genes per cell box")
+```
+
+```{r UMIs versus genes sc data}
+metadata_IEO_sc %>% 
+  ggplot(aes(x=nUMI, y=nGene, color=MitoRatio)) + 
+  geom_point() + 
+  scale_colour_gradient(low = "gray90", high = "black") +
+  stat_smooth(method=lm) +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  theme_classic() +
+  geom_vline(xintercept = 500) +
+  geom_hline(yintercept = 250) +
+  facet_wrap(~experiment) +
+  ggtitle("UMIs versus genes")
+```
+
+```{r Mitochondrial counts sc data}
+metadata_IEO_sc %>% 
+  ggplot(aes(color=experiment, x=MitoRatio, fill=experiment)) + 
+  geom_density(alpha = 0.2) + 
+  scale_x_log10() + 
+  theme_classic() +
+  geom_vline(xintercept = 0.1) +
+  ggtitle("Mitochondrial counts ratio")
+```
+
+```{r Ribosomal counts sc data}
+metadata_IEO_sc %>% 
+  ggplot(aes(color=experiment, x=RiboRatio, fill=experiment)) + 
+  geom_density(alpha = 0.2) + 
+  scale_x_log10() + 
+  theme_classic() +
+  ggtitle("Ribosomal counts ratio")
+```
+
+```{r Complexity sc data}
+metadata_IEO_sc %>%
+  ggplot(aes(x=log10GenesPerUMI, color = experiment, fill=experiment)) +
+  geom_density(alpha = 0.2) +
+  theme_classic() +
+  geom_vline(xintercept = 0.8) +
+  ggtitle("Complexity")
+```
+
+```{r Subsetting IEO_sc based on QC above}
+IEO_sc_filtered <- subset(IEO_sc, subset = (nUMI >= 500) & (nGene >= 250) & (log10GenesPerUMI >0.80) & (MitoRatio < 0.1))
+
+
+table(IEO_sc_filtered$experiment)
+table(IEO_sc_filtered$timepoint)
+table(IEO_sc_filtered$cellline)
+table(IEO_sc_filtered$method)
+table(IEO_sc_filtered$technique)
+```
+
+### Integration of filtered datasets
+```{r Integration of filtered sn anc sc data}
+IEO_filtered <- merge(IEO_sc_filtered, IEO_sn_filtered)
+```
+
+```{r Check numbers filtered}
+table(IEO_filtered$experiment)
+table(IEO_filtered$timepoint)
+table(IEO_filtered$cellline)
+table(IEO_filtered$method)
+table(IEO_filtered$technique)
+```
+
+```{r Save IEO_filtered}
+saveRDS(IEO_filtered, "~/output/IEO_filtered.rds")
+```
+
+## Evaluating effects of cell cycle, mitochondrial content, and ribosomal content
+
+### Cell cycle
+```{r Normalize}
+IEO_cellcycle <- NormalizeData(IEO_filtered)
+```
+
+```{r Cell cycle effect}
+load("~/data/cycle.rda")
+IEO_cellcycle <- CellCycleScoring(IEO_cellcycle, 
+                                 g2m.features = g2m_genes, 
+                                 s.features = s_genes)
+IEO_cellcycle <- FindVariableFeatures(IEO_cellcycle, 
+                     selection.method = "vst",
+                     nfeatures = 2000, 
+                     verbose = FALSE)
+IEO_cellcycle <- ScaleData(IEO_cellcycle)
+IEO_cellcycle <- RunPCA(IEO_cellcycle)
+DimPlot_cellcycle <- DimPlot(IEO_cellcycle,
+        reduction = "pca",
+        group.by= "Phase",
+        split.by = "Phase",
+        raster=FALSE) & NoLegend() & NoAxes()
+```
+
+```{r Cell cycle effect plot}
+pdf("DimPlot_cellcycle.pdf", width = 8, height = 4)
+print(DimPlot_cellcycle)
+dev.off()
+DimPlot_cellcycle
+```
+
+A difference between cell cycle phases can be identified.
+
+### Mitochodrial content
+```{r MitoRatio effects}
+summary(IEO_cellcycle@meta.data$MitoRatio)
+IEO_cellcycle@meta.data$mitoFr <- cut(IEO_cellcycle@meta.data$MitoRatio, 
+                   breaks=c(-Inf, 0.000000, 0.000593, 0.015623, Inf), 
+                   labels=c("Low","Medium","Medium high", "High"))
+DimPlot_MitoRatio <- DimPlot(IEO_cellcycle,
+        reduction = "pca",
+        group.by= "mitoFr",
+        split.by = "mitoFr", raster = FALSE) & NoLegend() & NoAxes()
+
+pdf("DimPlot_MitoRatio.pdf", width = 9, height = 4)
+print(DimPlot_MitoRatio)
+dev.off()
+DimPlot_MitoRatio
+```
+
+A difference between MitoRatio can be identified.
+
+### Ribosomal content
+```{r RiboRatio effects}
+summary(IEO_cellcycle@meta.data$RiboRatio)
+IEO_cellcycle@meta.data$riboFr <- cut(IEO_cellcycle@meta.data$RiboRatio, 
+                   breaks=c(-Inf, 0.009531, 0.044105, 0.269036, Inf), 
+                   labels=c("Low","Medium","Medium high", "High"))
+DimPlot_RiboRatio <- DimPlot(IEO_cellcycle,
+        reduction = "pca",
+        group.by= "riboFr",
+        split.by = "riboFr", raster = FALSE) & NoLegend() & NoAxes()
+
+pdf("DimPlot_RiboRatio.pdf", width = 9, height = 4) 
+print(DimPlot_RiboRatio)
+dev.off()
+DimPlot_RiboRatio
+```
+
+A difference between RiboRatio can be identified.
+
+## Normalize and CellCycleScoring before SCTransform
+```{r}
+IEO_filtered <- IEO_filtered %>% NormalizeData %>% CellCycleScoring(g2m.features=g2m_genes, s.features=s_genes)
+IEO_SCT_normal <- IEO_filtered
+IEO_SCT_cc <- IEO_filtered
+IEO_SCT_ccmi <- IEO_filtered
+IEO_SCT_ccmiri <- IEO_filtered
+```
+
+SCTransform is performed without regressing out anything, with regressing out cell cycle (_cc), with regressing out cell cycle and MitoRatio (_ccmi), or with regressing out cell cycle, MitoRatio and RiboRatio (_ccmiri)
+
+```{r SCTransform IEO_SCT_normal}
+IEO_SCT_normal <- SCTransform(IEO_SCT_normal, variable.features.n = 5000)
+saveRDS(IEO_SCT_normal, "~/output/IEO_SCT_normal.rds")
+```
+```{r SCTransform IEO_SCT_cc}
+IEO_SCT_cc <- SCTransform(IEO_SCT_cc, variable.features.n = 5000, vars.to.regress = c("S.Score", "G2M.Score"))
+saveRDS(IEO_SCT_cc, "~/output/IEO_SCT_cc.rds")
+```
+```{r SCTransform IEO_SCT_ccmi}
+IEO_SCT_ccmi <- SCTransform(IEO_SCT_ccmi, variable.features.n = 5000, vars.to.regress = c("S.Score", "G2M.Score","MitoRatio"))
+saveRDS(IEO_SCT_ccmi, "~/output/IEO_SCT_ccmi.rds")
+```
+```{r SCTransform IEO_SCT_ccmiri}
+IEO_SCT_ccmiri <- SCTransform(IEO_SCT_ccmiri, variable.features.n = 5000, vars.to.regress = c("S.Score", "G2M.Score","MitoRatio", "RiboRatio"))
+saveRDS(IEO_SCT_ccmiri, "~/output/IEO_SCT_ccmiri.rds")
+```
+
+## Integration using Harmony
+PCA is performed using npcs 30, 50 or 100
+
+```{r Object _normal for Harmony}
+IEO_SCT_normal_PCA30 <- RunPCA(IEO_SCT_normal, npcs = 30, verbose = FALSE)
+IEO_SCT_normal_PCA50 <- RunPCA(IEO_SCT_normal, npcs = 50, verbose = FALSE)
+IEO_SCT_normal_PCA100 <- RunPCA(IEO_SCT_normal, npcs = 100, verbose = FALSE)
+saveRDS(IEO_SCT_normal_PCA30, "~/output/IEO_SCT_normal_PCA30.rds")
+saveRDS(IEO_SCT_normal_PCA50, "~/output/IEO_SCT_normal_PCA50.rds")
+saveRDS(IEO_SCT_normal_PCA100, "~/output/IEO_SCT_normal_PCA100.rds")
+```
+
+```{r Object _cc for Harmony}
+IEO_SCT_cc_PCA30 <- RunPCA(IEO_SCT_cc, npcs = 30, verbose = FALSE)
+IEO_SCT_cc_PCA50 <- RunPCA(IEO_SCT_cc, npcs = 50, verbose = FALSE)
+IEO_SCT_cc_PCA100 <- RunPCA(IEO_SCT_cc, npcs = 100, verbose = FALSE)
+saveRDS(IEO_SCT_cc_PCA30, "~/output/IEO_SCT_cc_PCA30.rds")
+saveRDS(IEO_SCT_cc_PCA50, "~/output/IEO_SCT_cc_PCA50.rds")
+saveRDS(IEO_SCT_cc_PCA100, "~/output/IEO_SCT_cc_PCA100.rds")
+```
+
+```{r Object _ccmi for Harmony}
+IEO_SCT_ccmi_PCA30 <- RunPCA(IEO_SCT_ccmi, npcs = 30, verbose = FALSE)
+IEO_SCT_ccmi_PCA50 <- RunPCA(IEO_SCT_ccmi, npcs = 50, verbose = FALSE)
+IEO_SCT_ccmi_PCA100 <- RunPCA(IEO_SCT_ccmi, npcs = 100, verbose = FALSE)
+saveRDS(IEO_SCT_ccmi_PCA30, "~/output/IEO_SCT_ccmi_PCA30.rds")
+saveRDS(IEO_SCT_ccmi_PCA50, "~/output/IEO_SCT_ccmi_PCA50.rds")
+saveRDS(IEO_SCT_ccmi_PCA100, "~/output/IEO_SCT_ccmi_PCA100.rds")
+```
+
+```{r Object _ccmiri for Harmony}
+IEO_SCT_ccmiri_PCA30 <- RunPCA(IEO_SCT_ccmiri, npcs = 30, verbose = FALSE)
+IEO_SCT_ccmiri_PCA50 <- RunPCA(IEO_SCT_ccmiri, npcs = 50, verbose = FALSE)
+IEO_SCT_ccmiri_PCA100 <- RunPCA(IEO_SCT_ccmiri, npcs = 100, verbose = FALSE)
+saveRDS(IEO_SCT_ccmiri_PCA30, "~/output/IEO_SCT_ccmiri_PCA30.rds")
+saveRDS(IEO_SCT_ccmiri_PCA50, "~/output/IEO_SCT_ccmiri_PCA50.rds")
+saveRDS(IEO_SCT_ccmiri_PCA100, "~/output/IEO_SCT_ccmiri_PCA100.rds")
+```
+
+```{r Run Harmony _normal}
+IEO_SCT_normal_PCA30 <- IEO_SCT_normal_PCA30 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+IEO_SCT_normal_PCA50 <- IEO_SCT_normal_PCA50 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+IEO_SCT_normal_PCA100 <- IEO_SCT_normal_PCA100 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+saveRDS(IEO_SCT_normal_PCA30, "~/output/IEO_SCT_normal_PCA30.rds")
+saveRDS(IEO_SCT_normal_PCA50, "~/output/IEO_SCT_normal_PCA50.rds")
+saveRDS(IEO_SCT_normal_PCA100, "~/output/IEO_SCT_normal_PCA100.rds")
+```
+
+```{r Run Harmony _cc}
+IEO_SCT_cc_PCA30 <- IEO_SCT_cc_PCA30 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+IEO_SCT_cc_PCA50 <- IEO_SCT_cc_PCA50 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+IEO_SCT_cc_PCA100 <- IEO_SCT_cc_PCA100 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+saveRDS(IEO_SCT_cc_PCA30, "~/output/IEO_SCT_cc_PCA30.rds")
+saveRDS(IEO_SCT_cc_PCA50, "~/output/IEO_SCT_cc_PCA50.rds")
+saveRDS(IEO_SCT_cc_PCA100, "~/output/IEO_SCT_cc_PCA100.rds")
+```
+
+```{r Run Harmony _ccmi}
+IEO_SCT_ccmi_PCA30 <- IEO_SCT_normal_PCA30 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+IEO_SCT_ccmi_PCA50 <- IEO_SCT_normal_PCA50 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+IEO_SCT_ccmi_PCA100 <- IEO_SCT_normal_PCA100 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+saveRDS(IEO_SCT_ccmi_PCA30, "~/output/IEO_SCT_ccmi_PCA30.rds")
+saveRDS(IEO_SCT_ccmi_PCA50, "~/output/IEO_SCT_ccmi_PCA50.rds")
+saveRDS(IEO_SCT_ccmi_PCA100, "~/output/IEO_SCT_ccmi_PCA100.rds")
+```
+
+```{r Run Harmony _ccmiri}
+IEO_SCT_ccmiri_PCA30 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+IEO_SCT_ccmiri_PCA50 <- IEO_SCT_ccmiri_PCA50 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+IEO_SCT_ccmiri_PCA100 <- IEO_SCT_ccmiri_PCA100 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+saveRDS(IEO_SCT_ccmiri_PCA30, "~/output/IEO_SCT_ccmiri_PCA30.rds")
+saveRDS(IEO_SCT_ccmiri_PCA50, "~/output/IEO_SCT_ccmiri_PCA50.rds")
+saveRDS(IEO_SCT_ccmiri_PCA100, "~/output/IEO_SCT_ccmiri_PCA100.rds")
+```
+
+## UMAP generation to evaluate effect of SCTransform and PCA variables on clustering, using resolution of 0.7
+
+```{r UMAP 0.7}
+IEO_SCT_normal_PCA30_UMAP <- IEO_SCT_normal_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_normal_PCA30_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_normal_PCA30_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_normal_PCA30_UMAP, "~/output/IEO_SCT_normal_PCA30_UMAP.rds")
+
+IEO_SCT_cc_PCA30_UMAP <-IEO_SCT_cc_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_cc_PCA30_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_cc_PCA30_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_cc_PCA30_UMAP, "~/output/IEO_SCT_cc_PCA30_UMAP.rds")
+
+IEO_SCT_ccmi_PCA30_UMAP <-IEO_SCT_ccmi_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_ccmi_PCA30_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_ccmi_PCA30_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_ccmi_PCA30_UMAP, "~/output/IEO_SCT_ccmi_PCA30_UMAP.rds")
+
+IEO_SCT_ccmiri_PCA30_UMAP <-IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_ccmiri_PCA30_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_ccmiri_PCA30_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_ccmiri_PCA30_UMAP, "~/output/IEO_SCT_ccmiri_PCA30_UMAP.rds")
+
+IEO_SCT_normal_PCA50_UMAP <-IEO_SCT_normal_PCA50 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_normal_PCA50_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_normal_PCA50_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_normal_PCA50_UMAP, "~/output/IEO_SCT_normal_PCA50_UMAP.rds")
+
+IEO_SCT_cc_PCA50_UMAP <-IEO_SCT_cc_PCA50 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_cc_PCA50_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_cc_PCA50_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_cc_PCA50_UMAP, "~/output/ieo_SCT_cc_PCA50_UMAP.rds")
+
+IEO_SCT_ccmi_PCA50_UMAP <-IEO_SCT_ccmi_PCA50 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_ccmi_PCA50_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_ccmi_PCA50_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_ccmi_PCA50_UMAP, "~/output/IEO_SCT_ccmi_PCA50_UMAP.rds")
+
+IEO_SCT_ccmiri_PCA50_UMAP <- IEO_SCT_ccmiri_PCA50 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_ccmiri_PCA50_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_ccmiri_PCA50_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_ccmiri_PCA50_UMAP, "~/output/IEO_SCT_ccmiri_PCA50_UMAP.rds")
+
+IEO_SCT_normal_PCA100_UMAP <-IEO_SCT_normal_PCA100 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_normal_PCA100_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_normal_PCA100_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_normal_PCA100_UMAP, "~/output/IEO_SCT_normal_PCA100_UMAP.rds") 
+
+IEO_SCT_cc_PCA100_UMAP <-IEO_SCT_cc_PCA100 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_cc_PCA100_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_cc_PCA100_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_cc_PCA100_UMAP, "~/output/ieo_SCT_cc_PCA100_UMAP.rds")
+
+IEO_SCT_ccmi_PCA100_UMAP <-IEO_SCT_ccmi_PCA100 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_ccmi_PCA100_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_ccmi_PCA100_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_ccmi_PCA100_UMAP, "~/output/IEO_SCT_ccmi_PCA100_UMAP.rds")
+
+IEO_SCT_ccmiri_PCA100_UMAP <- IEO_SCT_ccmiri_PCA100 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_SCT_ccmiri_PCA100_UMAP, raster = FALSE)
+DimPlot(IEO_SCT_ccmiri_PCA100_UMAP, raster = FALSE, split.by = "experiment")
+saveRDS(IEO_SCT_ccmiri_PCA100_UMAP, "~/output/IEO_SCT_ccmiri_PCA100_UMAP.rds")
+```
+
+### UMAP evaluation and gene marker expression
+
+```{r Generate plots}
+IEO_SCT_normal_PCA30_UMAP_pals <- DimPlot(IEO_SCT_normal_PCA30_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_normal_PCA30_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_normal_PCA30_UMAP_pals)
+dev.off()
+
+IEO_SCT_cc_PCA30_UMAP_pals <- DimPlot(IEO_SCT_cc_PCA30_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_cc_PCA30_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_cc_PCA30_UMAP_pals)
+
+IEO_SCT_ccmi_PCA30_UMAP_pals <- DimPlot(IEO_SCT_ccmi_PCA30_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_ccmi_PCA30_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmi_PCA30_UMAP_pals)
+dev.off()
+
+IEO_SCT_ccmiri_PCA30_UMAP_pals <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_pals)
+dev.off()
+
+IEO_SCT_normal_PCA50_UMAP_pals <- DimPlot(IEO_SCT_normal_PCA50_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_normal_PCA50_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_normal_PCA50_UMAP_pals)
+dev.off()
+
+IEO_SCT_cc_PCA50_UMAP_pals <- DimPlot(IEO_SCT_cc_PCA50_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(46,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_cc_PCA50_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_cc_PCA50_UMAP_pals)
+dev.off()
+
+IEO_SCT_ccmi_PCA50_UMAP_pals <- DimPlot(IEO_SCT_ccmi_PCA50_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_ccmi_PCA50_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmi_PCA50_UMAP_pals)
+dev.off()
+
+IEO_SCT_ccmiri_PCA50_UMAP_pals <- DimPlot(IEO_SCT_ccmiri_PCA50_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA50_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA50_UMAP_pals)
+dev.off()
+
+IEO_SCT_normal_PCA100_UMAP_pals <- DimPlot(IEO_SCT_normal_PCA100_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_normal_PCA100_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_normal_PCA100_UMAP_pals)
+dev.off()
+
+IEO_SCT_cc_PCA100_UMAP_pals <- DimPlot(IEO_SCT_cc_PCA100_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_cc_PCA100_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_cc_PCA100_UMAP_pals)
+dev.off()
+
+IEO_SCT_ccmi_PCA100_UMAP_pals <- DimPlot(IEO_SCT_ccmi_PCA100_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_ccmi_PCA100_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmi_PCA100_UMAP_pals)
+dev.off()
+
+IEO_SCT_ccmiri_PCA100_UMAP_pals <- DimPlot(IEO_SCT_ccmiri_PCA100_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+jpeg("IEO_SCT_ccmiri_PCA100_UMAP_pals.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA100_UMAP_pals)
+dev.off()
+```
+
+```{r Cell type markers _PCA30}
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_normal_PCA30_UMAP_plot <- plot_density(IEO_SCT_normal_PCA30_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_normal_PCA30_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_normal_PCA30_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_cc_PCA30_UMAP_plot <- plot_density(IEO_SCT_cc_PCA30_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_cc_PCA30_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_cc_PCA30_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_ccmi_PCA30_UMAP_plot <- plot_density(IEO_SCT_ccmi_PCA30_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_ccmi_PCA30_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_ccmi_PCA30_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_ccmiri_PCA30_UMAP_plot <- plot_density(IEO_SCT_ccmiri_PCA30_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_ccmiri_PCA30_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_ccmiri_PCA30_UMAP_plot)
+dev.off()
+```
+```{r Cell type markers _PCA50}
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_normal_PCA50_UMAP_plot <- plot_density(IEO_SCT_normal_PCA50_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_normal_PCA50_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_normal_PCA50_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_cc_PCA50_UMAP_plot <- plot_density(IEO_SCT_cc_PCA50_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_cc_PCA50_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_cc_PCA50_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_ccmi_PCA50_UMAP_plot <- plot_density(IEO_SCT_ccmi_PCA50_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_ccmi_PCA50_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_ccmi_PCA50_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_ccmiri_PCA50_UMAP_plot <- plot_density(IEO_SCT_ccmiri_PCA50_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_ccmiri_PCA50_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_ccmiri_PCA50_UMAP_plot)
+dev.off()
+```
+```{r Cell type markers _PCA100}
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_normal_PCA100_UMAP_plot <- plot_density(IEO_SCT_normal_PCA100_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_normal_PCA100_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_normal_PCA100_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_cc_PCA100_UMAP_plot <- plot_density(IEO_SCT_cc_PCA100_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_cc_PCA100_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_cc_PCA100_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_ccmi_PCA100_UMAP_plot <- plot_density(IEO_SCT_ccmi_PCA100_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_ccmi_PCA100_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_ccmi_PCA100_UMAP_plot)
+dev.off()
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_SCT_ccmiri_PCA100_UMAP_plot <- plot_density(IEO_SCT_ccmiri_PCA100_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_SCT_ccmiri_PCA100_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_SCT_ccmiri_PCA100_UMAP_plot)
+dev.off()
+```
+
+Clustering of _ccmiri_PCA30 exceeds other methods.
+
+## Determine UMAP resolution of _ccmiri_PCA30
+```{r UMAP resolution .1}
+IEO_SCT_ccmiri_PCA30 <- readRDS("~/output/IEO_SCT_ccmiri_PCA30.rds")
+IEO_SCT_ccmiri_PCA30_UMAP_1 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.1) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_1plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_1, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_1plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_1plot)
+dev.off()
+```
+```{r UMAP resolution .2}
+IEO_SCT_ccmiri_PCA30_UMAP_2 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.2) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_2plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_2, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_2plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_2plot)
+dev.off()
+```
+```{r UMAP resolution .3}
+IEO_SCT_ccmiri_PCA30_UMAP_3 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.3) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_3plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_3, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_3plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_3plot)
+dev.off()
+```
+```{r UMAP resolution .4}
+IEO_SCT_ccmiri_PCA30_UMAP_4 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.4) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_4plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_4, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_4plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_4plot)
+dev.off()
+```
+```{r UMAP resolution .5}
+IEO_SCT_ccmiri_PCA30_UMAP_5 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.5) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_5plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_5, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_5plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_5plot)
+dev.off()
+```
+```{r UMAP resolution .6}
+IEO_SCT_ccmiri_PCA30_UMAP_6 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.6) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_6plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_6, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_6plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_6plot)
+dev.off()
+```
+```{r UMAP resolution .7}
+IEO_SCT_ccmiri_PCA30_UMAP_7 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_7plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_7, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_7plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_7plot)
+dev.off()
+```
+```{r UMAP resolution .8}
+IEO_SCT_ccmiri_PCA30_UMAP_8 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.8) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_8plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_8, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_8plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_8plot)
+dev.off()
+```
+```{r UMAP resolution .9}
+IEO_SCT_ccmiri_PCA30_UMAP_9 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_9plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_9, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_9plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_9plot)
+dev.off()
+```
+```{r UMAP resolution 1.0}
+IEO_SCT_ccmiri_PCA30_UMAP_10 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 1.0) %>% 
+    identity()
+IEO_SCT_ccmiri_PCA30_UMAP_10plot <- DimPlot(IEO_SCT_ccmiri_PCA30_UMAP_10, label = TRUE, pt.size = 5, raster = FALSE)
+jpeg("IEO_SCT_ccmiri_PCA30_UMAP_10plot.jpg", width = 3600, height = 2400)
+print(IEO_SCT_ccmiri_PCA30_UMAP_10plot)
+dev.off()
+```
+
+Using a resolution of .7 results in separate clustering of hair cells, a separate POM population, and multiple clusters of keratinocytes separating intermediate from peridermal keratinocytes as would be expected. A resolution of .7 is used for further evaluation. 
+
+## Identification of cluster markers for IEO_SCT_ccmiri_PCA30_UMAP_7
+```{r UMAP resolution 0.7 for markers}
+IEO_SCT_ccmiri_PCA30_UMAP_7 <- IEO_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+saveRDS(IEO_SCT_ccmiri_PCA30_UMAP_7, "~/output/IEO_SCT_ccmiri_PCA30_UMAP_7.rds")
+```
+
+To access the expression levels of all genes, rather than just the 3000 most highly variable genes, we can use the normalized count data stored in the RNA assay slot.
+
+```{r UMAP resolution 0.7 for markers}
+IEO_SCT_ccmiri_PCA30_UMAP_7 <- readRDS("~/output/IEO_SCT_ccmiri_PCA30_UMAP_7.rds")
+
+DefaultAssay(IEO_SCT_ccmiri_PCA30_UMAP_7) <- "RNA"
+IEO_SCT_ccmiri_PCA30_UMAP_7 <- NormalizeData(IEO_SCT_ccmiri_PCA30_UMAP_7, verbose = FALSE)
+
+FindAllMarkers(IEO_SCT_ccmiri_PCA30_UMAP_7, only.pos = TRUE, logfc.threshold = 0.25)
+write.csv(IEO_SCT_ccmiri_PCA30_UMAP_7.markers, "~/output/IEO_SCT_ccmiri_PCA30_UMAP_7.markers.csv")
+
+## Extract top 10 markers per cluster
+IEO_SCT_ccmiri_PCA30_UMAP_7.markers_top10 <- IEO_SCT_ccmiri_PCA30_UMAP_7.markers %>% 
+  mutate(avg_fc = (sc_avg_log2FC + sn_avg_log2FC) /2) %>% 
+  group_by(cluster_id) %>% 
+  top_n(n = 10, 
+        wt = avg_fc)
+
+## Visualize top 10 markers per cluster
+View(IEO_SCT_ccmiri_PCA30_UMAP_7.markers_top10)
+write.csv(IEO_SCT_ccmiri_PCA30_UMAP_7.markers_top10, "~/output/IEO_SCT_ccmiri_PCA30_UMAP_7.markers_top10.csv")
+```
+
+## Generation of 3D UMAP that can be used for analysis using the software package BBrowser from BioTuring
+
+```{r 3D UMAP generation}
+IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA <- IEO_SCT_ccmiri_PCA30_UMAP_7
+IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA <- RunUMAP(IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA,
+                            reduction = "harmony",
+                            dims = 1:30,
+                            n.components = 3L,
+                            reduction.name = "umap_3d",
+                            reduction.key = "UMAP_3d")
+umap_1 <- IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,1]
+umap_2 <- IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,2]
+umap_3 <- IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,3]
+Embeddings(object = IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, reduction = "umap_3d")
+plot.data <- FetchData(object = IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, vars = c("UMAP3d_1", "UMAP3d_2", "UMAP3d_3", "seurat_clusters"))
+
+require(rBCS)
+ExportSeuratObject(IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, "~/output/IEO_SCT_ccmiri_PCA30_UMAP_7_3D_RNA.bcs", overwrite=TRUE)
+```
+
+
+## Analyses of scRNAseq and snRNAseq seperately
+
+Generate UMAP from single cell and single nucleus data separate to show that integration is justifiable. 
+
+```{r Open IEO_filtered}
+IEO_filtered <- readRDS("~/output/IEO_filtered.rds")
+```
+
+### Split data for seperate QC for sn and sc RNA seq experiments
+```{r Select sn data from IEO_filtered}
+IEO_filtered_sn <- subset(IEO_filtered, subset = technique == "sn")
+
+table(IEO_filtered_sn$experiment)
+table(IEO_filtered_sn$timepoint)
+table(IEO_filtered_sn$cellline)
+table(IEO_filtered_sn$method)
+table(IEO_filtered_sn$technique)
+```
+
+```{r Select sc data from IEO_filtered}
+IEO_filtered_sc <- subset(IEO_filtered, subset = technique == "sc")
+
+table(IEO_filtered_sc$experiment)
+table(IEO_filtered_sc$timepoint)
+table(IEO_filtered_sc$cellline)
+table(IEO_filtered_sc$method)
+table(IEO_filtered_sc$technique)
+```
+
+```{r Save IEO_filtered_sc}
+saveRDS(IEO_filtered_sc, "~/output/IEO_filtered_sc.rds")
+```
+
+```{r Save IEO_filtered_sn}
+saveRDS(IEO_filtered_sn, "~/output/IEO_filtered_sn.rds")
+```
+
+## scRNAseq
+
+### Evaluating effects of cell cycle, mitochondrial content, and ribosomal content
+```{r Normalize sc}
+IEO_cellcycle_sc <- NormalizeData(IEO_filtered_sc)
+```
+
+```{r Cell cycle effect sc}
+load("~/data/cycle.rda")
+IEO_cellcycle_sc <- CellCycleScoring(IEO_cellcycle_sc, 
+                                 g2m.features = g2m_genes, 
+                                 s.features = s_genes)
+IEO_cellcycle_sc <- FindVariableFeatures(IEO_cellcycle_sc, 
+                     selection.method = "vst",
+                     nfeatures = 2000, 
+                     verbose = FALSE)
+IEO_cellcycle_sc <- ScaleData(IEO_cellcycle_sc)
+IEO_cellcycle_sc <- RunPCA(IEO_cellcycle_sc)
+DimPlot_cellcycle_sc <- DimPlot(IEO_cellcycle_sc,
+        reduction = "pca",
+        group.by= "Phase",
+        split.by = "Phase",
+        raster=FALSE) & NoLegend() & NoAxes()
+```
+
+```{r Cell cycle effect plot sc}
+pdf("DimPlot_cellcycle_sc.pdf", width = 8, height = 4)
+print(DimPlot_cellcycle_sc)
+dev.off()
+```
+
+A difference between cell cycle phases can be identified.
+
+#### Evaluating effects of mitochodrial expression
+```{r MitoRatio effects sc}
+summary(IEO_cellcycle_sc@meta.data$MitoRatio)
+IEO_cellcycle_sc@meta.data$mitoFr <- cut(IEO_cellcycle_sc@meta.data$MitoRatio, 
+                   breaks=c(-Inf, 0.00889, 0.01765, 0.03224, Inf), 
+                   labels=c("Low","Medium","Medium high", "High"))
+DimPlot_MitoRatio_sc <- DimPlot(IEO_cellcycle_sc,
+        reduction = "pca",
+        group.by= "mitoFr",
+        split.by = "mitoFr", raster = FALSE) & NoLegend() & NoAxes()
+
+pdf("DimPlot_MitoRatio_sc.pdf", width = 9, height = 4)
+print(DimPlot_MitoRatio_sc)
+dev.off()
+```
+
+A difference between MitoRatio can be identified.
+
+#### Evaluating effects of ribosomal expression
+```{r RiboRatio effects sc}
+summary(IEO_cellcycle_sc@meta.data$RiboRatio)
+IEO_cellcycle_sc@meta.data$riboFr <- cut(IEO_cellcycle_sc@meta.data$RiboRatio, 
+                   breaks=c(-Inf, 0.22119, 0.27225, 0.33095, Inf), 
+                   labels=c("Low","Medium","Medium high", "High"))
+DimPlot_RiboRatio_sc <- DimPlot(IEO_cellcycle_sc,
+        reduction = "pca",
+        group.by= "riboFr",
+        split.by = "riboFr", raster = FALSE) & NoLegend() & NoAxes()
+
+pdf("DimPlot_RiboRatio_sc.pdf", width = 9, height = 4) 
+print(DimPlot_RiboRatio_sc)
+dev.off()
+```
+
+A difference between RiboRatio can be identified.
+
+#### Normalize and CellCycleScoring before SCTransform
+```{r CellCycleScoring sc}
+IEO_sc_SCT_ccmiri <- IEO_filtered_sc %>% NormalizeData %>% CellCycleScoring(g2m.features=g2m_genes, s.features=s_genes)
+```
+
+SCTransform is performed with regressing out cell cycle, MitoRatio and RiboRatio (_ccmiri)
+
+```{r SCTransform IEO_sc_SCT_ccmiri}
+IEO_sc_SCT_ccmiri <- SCTransform(IEO_sc_SCT_ccmiri, variable.features.n = 5000, vars.to.regress = c("S.Score", "G2M.Score","MitoRatio", "RiboRatio"))
+saveRDS(IEO_sc_SCT_ccmiri, "~/output/IEO_sc_SCT_ccmiri.rds")
+```
+
+### Integration using Harmony
+PCA is performed using npcs 30
+
+```{r Object _ccmiri for Harmony sc}
+IEO_sc_SCT_ccmiri_PCA30 <- RunPCA(IEO_sc_SCT_ccmiri, npcs = 30, verbose = FALSE)
+saveRDS(IEO_sc_SCT_ccmiri_PCA30, "~/output/IEO_sc_SCT_ccmiri_PCA30.rds")
+```
+
+```{r Run Harmony _ccmiri sc}
+IEO_sc_SCT_ccmiri_PCA30 <- IEO_sc_SCT_ccmiri_PCA30 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+saveRDS(IEO_sc_SCT_ccmiri_PCA30, "~/output/IEO_sc_SCT_ccmiri_PCA30.rds")
+```
+
+### UMAP generation to show effect of SCTransform and PCA variables on clustering, using resolution of 0.7
+```{r UMAP 0.7 sc}
+IEO_sc_SCT_ccmiri_PCA30_UMAP <-IEO_sc_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP, raster = FALSE)
+saveRDS(IEO_sc_SCT_ccmiri_PCA30_UMAP, "~/output/IEO_sc_SCT_ccmiri_PCA30_UMAP.rds")
+```
+
+### UMAP marker identification
+```{r Plot for sc_ccmiri_PCA30_UMAP}
+IEO_sc_SCT_ccmiri_PCA30_UMAP_pals <- DimPlot(IEO_sc_SCT_ccmiri_PCA30_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+
+jpeg("IEO_sc_SCT_ccmiri_PCA30_UMAP_pals.jpg", width = 2400, height = 2400)
+print(IEO_sc_SCT_ccmiri_PCA30_UMAP_pals)
+dev.off()
+
+## To access the expression levels of all genes, rather than just the 3000 most highly variable genes, we can use the normalized count data stored in the RNA assay slot.
+
+DefaultAssay(IEO_sc_SCT_ccmiri_PCA30_UMAP) <- "RNA"
+IEO_sc_SCT_ccmiri_PCA30_UMAP <- NormalizeData(IEO_sc_SCT_ccmiri_PCA30_UMAP, verbose = FALSE)
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_sc_SCT_ccmiri_PCA30_UMAP_plot <- plot_density(IEO_sc_SCT_ccmiri_PCA30_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_sc_SCT_ccmiri_PCA30_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_sc_SCT_ccmiri_PCA30_UMAP_plot)
+dev.off()
+```
+
+```{r FindAllMarkers sc}
+DefaultAssay(IEO_sc_SCT_ccmiri_PCA30_UMAP) <- "RNA"
+IEO_sc_SCT_ccmiri_PCA30_UMAP <- NormalizeData(IEO_sc_SCT_ccmiri_PCA30_UMAP, verbose = FALSE)
+IEO_sc_SCT_ccmiri_PCA30_UMAP.markers <- FindAllMarkers(IEO_sc_SCT_ccmiri_PCA30_UMAP, only.pos = TRUE, logfc.threshold = 0.25)
+write.csv(IEO_sc_SCT_ccmiri_PCA30_UMAP.markers, "~/output/IEO_sc_SCT_ccmiri_PCA30_UMAP.markers.csv")
+```
+
+```{r 3D UMAP generation sc}
+IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA <- IEO_sc_SCT_ccmiri_PCA30_UMAP
+IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA <- RunUMAP(IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA,
+                            reduction = "harmony",
+                            dims = 1:30,
+                            n.components = 3L,
+                            reduction.name = "umap_3d",
+                            reduction.key = "UMAP_3d")
+umap_1 <- IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,1]
+umap_2 <- IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,2]
+umap_3 <- IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,3]
+Embeddings(object = IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, reduction = "umap_3d")
+plot.data <- FetchData(object = IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, vars = c("UMAP3d_1", "UMAP3d_2", "UMAP3d_3", "seurat_clusters"))
+
+require(rBCS)
+ExportSeuratObject(IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, "~/output/IEO_sc_SCT_ccmiri_PCA30_UMAP_7_3D_RNA.bcs", overwrite = TRUE)
+```
+
+## snRNAseq
+### Evaluating effects of cell cycle, mitochondrial genes, and ribosomal genes
+```{r Normalize sn}
+IEO_cellcycle_sn <- NormalizeData(IEO_filtered_sn)
+```
+
+```{r Cell cycle effect sn}
+IEO_cellcycle_sn <- CellCycleScoring(IEO_cellcycle_sn, 
+                                 g2m.features = g2m_genes, 
+                                 s.features = s_genes)
+IEO_cellcycle_sn <- FindVariableFeatures(IEO_cellcycle_sn, 
+                     selection.method = "vst",
+                     nfeatures = 2000, 
+                     verbose = FALSE)
+IEO_cellcycle_sn <- ScaleData(IEO_cellcycle_sn)
+IEO_cellcycle_sn <- RunPCA(IEO_cellcycle_sn)
+DimPlot_cellcycle_sn <- DimPlot(IEO_cellcycle_sn,
+        reduction = "pca",
+        group.by= "Phase",
+        split.by = "Phase",
+        raster=FALSE) & NoLegend() & NoAxes()
+```
+
+
+```{r Cell cycle effect plot sn}
+pdf("DimPlot_cellcycle_sn.pdf", width = 8, height = 4)
+print(DimPlot_cellcycle_sn)
+dev.off()
+```
+
+A difference between cell cycle phases can be identified.
+
+#### Evaluating effects of mitochodrial expression
+```{r MitoRatio effects sn}
+summary(IEO_cellcycle_sn@meta.data$MitoRatio)
+IEO_cellcycle_sn@meta.data$mitoFr <- cut(IEO_cellcycle_sn@meta.data$MitoRatio, 
+                   breaks=c(-Inf, 0.0000000, 0.0002712, 0.0002234, Inf), 
+                   labels=c("Low","Medium","Medium high", "High"))
+DimPlot_MitoRatio_sn <- DimPlot(IEO_cellcycle_sn,
+        reduction = "pca",
+        group.by= "mitoFr",
+        split.by = "mitoFr", raster = FALSE) & NoLegend() & NoAxes()
+
+pdf("DimPlot_MitoRatio_sn.pdf", width = 9, height = 4)
+print(DimPlot_MitoRatio_sn)
+dev.off()
+```
+
+A difference between MitoRatio can be identified.
+
+#### Evaluating effects of ribosomal expression
+```{r RiboRatio effects sn}
+summary(IEO_cellcycle_sn@meta.data$RiboRatio)
+IEO_cellcycle_sn@meta.data$riboFr <- cut(IEO_cellcycle_sn@meta.data$RiboRatio, 
+                   breaks=c(-Inf, 0.006757, 0.018805, 0.017417, Inf), 
+                   labels=c("Low","Medium","Medium high", "High"))
+DimPlot_RiboRatio_sn <- DimPlot(IEO_cellcycle_sn,
+        reduction = "pca",
+        group.by= "riboFr",
+        split.by = "riboFr", raster = FALSE) & NoLegend() & NoAxes()
+
+pdf("DimPlot_RiboRatio_sn.pdf", width = 9, height = 4) 
+print(DimPlot_RiboRatio_sn)
+dev.off()
+```
+
+A difference between RiboRatio can be identified.
+
+### Normalize and CellCycleScoring before SCTransform
+```{r sn}
+IEO_sn_SCT_ccmiri <- IEO_filtered_sn %>% NormalizeData %>% CellCycleScoring(g2m.features=g2m_genes, s.features=s_genes)
+```
+
+SCTransform is performed with regressing out cell cycle, MitoRatio and RiboRatio (_ccmiri)
+
+```{r SCTransform IEO_sn_SCT_ccmiri}
+IEO_sn_SCT_ccmiri <- SCTransform(IEO_sn_SCT_ccmiri, variable.features.n = 5000, vars.to.regress = c("S.Score", "G2M.Score","MitoRatio", "RiboRatio"))
+saveRDS(IEO_sn_SCT_ccmiri, "~/output/IEO_sn_SCT_ccmiri.rds")
+```
+
+### Integration using Harmony
+PCA is performed using npcs 30
+
+```{r Object _ccmiri for Harmony sn}
+IEO_sn_SCT_ccmiri_PCA30 <- RunPCA(IEO_sn_SCT_ccmiri, npcs = 30, verbose = FALSE)
+saveRDS(IEO_sn_SCT_ccmiri_PCA30, "~/output/IEO_sn_SCT_ccmiri_PCA30.rds")
+```
+
+```{r Run Harmony _ccmiri sn}
+IEO_sn_SCT_ccmiri_PCA30 <- IEO_sn_SCT_ccmiri_PCA30 %>% 
+    RunHarmony("experiment", assay.use = "SCT", plot_convergence = TRUE)
+saveRDS(IEO_sn_SCT_ccmiri_PCA30, "~/output/IEO_sn_SCT_ccmiri_PCA30.rds")
+```
+
+### UMAP generation to show effect of SCTransform and PCA variables on clustering, using resolution of 0.7
+```{r UMAP 0.7 sn}
+IEO_sn_SCT_ccmiri_PCA30_UMAP <-IEO_sn_SCT_ccmiri_PCA30 %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.7) %>% 
+    identity()
+DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP, raster = FALSE)
+saveRDS(IEO_sn_SCT_ccmiri_PCA30_UMAP, "~/output/IEO_sn_SCT_ccmiri_PCA30_UMAP.rds")
+```
+
+### UMAP marker identification
+```{r Plot for sn_ccmiri_PCA30_UMAP}
+IEO_sn_SCT_ccmiri_PCA30_UMAP_pals <- DimPlot(IEO_sn_SCT_ccmiri_PCA30_UMAP, reduction = "umap", pt.size = 5, raster=FALSE, cols = DiscretePalette(44,palette = "stepped")) & NoLegend() & NoAxes()
+
+jpeg("IEO_sn_SCT_ccmiri_PCA30_UMAP_pals.jpg", width = 2400, height = 2400)
+print(IEO_sn_SCT_ccmiri_PCA30_UMAP_pals)
+dev.off()
+
+## To access the expression levels of all genes, rather than just the 3000 most highly variable genes, we can use the normalized count data stored in the RNA assay slot.
+
+DefaultAssay(IEO_sn_SCT_ccmiri_PCA30_UMAP) <- "RNA"
+IEO_sn_SCT_ccmiri_PCA30_UMAP <- NormalizeData(IEO_sn_SCT_ccmiri_PCA30_UMAP, verbose = FALSE)
+
+options(repr.plot.height = 8, repr.plot.width = 12)
+celltypes_IEO_sn_SCT_ccmiri_PCA30_UMAP_plot <- plot_density(IEO_sn_SCT_ccmiri_PCA30_UMAP, c("EPCAM", "CDH1", "PRRX1", "STMN2", "SOX10", "OC90", "MYO7A", "OTOR", "ACTC1", "PECAM1", "KRT20", "MLANA", "SOX9", "KRT5", "MPZ", "TTR"))
+pdf("celltypes_IEO_sn_SCT_ccmiri_PCA30_UMAP_plot.pdf", width = 15, height = 10)
+print(celltypes_IEO_sn_SCT_ccmiri_PCA30_UMAP_plot)
+dev.off()
+```
+
+```{r FindAllMarkers sn}
+DefaultAssay(IEO_sn_SCT_ccmiri_PCA30_UMAP) <- "RNA"
+IEO_sn_SCT_ccmiri_PCA30_UMAP <- NormalizeData(IEO_sn_SCT_ccmiri_PCA30_UMAP, verbose = FALSE)
+IEO_sn_SCT_ccmiri_PCA30_UMAP.markers <- FindAllMarkers(IEO_sn_SCT_ccmiri_PCA30_UMAP, only.pos = TRUE, logfc.threshold = 0.25)
+write.csv(IEO_sn_SCT_ccmiri_PCA30_UMAP.markers, "~/output/IEO_sn_SCT_ccmiri_PCA30_UMAP.markers.csv")
+```
+
+```{r 3D UMAP generation sn}
+IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA <- IEO_sn_SCT_ccmiri_PCA30_UMAP
+IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA <- RunUMAP(IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA,
+                            reduction = "harmony",
+                            dims = 1:30,
+                            n.components = 3L,
+                            reduction.name = "umap_3d",
+                            reduction.key = "UMAP_3d")
+umap_1 <- IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,1]
+umap_2 <- IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,2]
+umap_3 <- IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA[["umap_3d"]]@cell.embeddings[,3]
+Embeddings(object = IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, reduction = "umap_3d")
+plot.data <- FetchData(object = IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, vars = c("UMAP3d_1", "UMAP3d_2", "UMAP3d_3", "seurat_clusters"))
+
+require(rBCS)
+ExportSeuratObject(IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA, "~/output/IEO_sn_SCT_ccmiri_PCA30_UMAP_7_3D_RNA.bcs", overwrite = TRUE)
+```
